@@ -1,7 +1,62 @@
-use crate::model::{EncryptedDataEntry, EncryptedDataEntryResponse, ErrorResponse, UserResponse};
+use crate::encryption;
+use crate::entries::{
+    create_note_entry, create_password_entry, encrypt_note_entry, encrypt_password_entry,
+};
+use crate::model::{
+    Card, Ciphers, EncryptedDataEntry, EncryptedDataEntryResponse, ErrorResponse, Note, OtpToken,
+    Password, UserResponse,
+};
 use crate::requests;
 
-pub fn test_requests() {
+pub fn test_print_all_data_entries(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    ciphers: &Ciphers,
+) {
+    let response = requests::get_all_encrypted_data_entries_request(
+        &client,
+        "http://localhost:8080/get_all_encrypted_data_entries",
+    );
+
+    let data_entries = response.unwrap().data;
+
+    println!("Data entries:");
+    for data_entry in data_entries {
+        let unencrypted_content = encryption::decrypt_data_entry(
+            data_entry.clone(),
+            match data_entry.content_type.as_str() {
+                "password" => &ciphers.password_cipher,
+                "note" => &ciphers.note_cipher,
+                "card" => &ciphers.card_cipher,
+                "otp_token" => &ciphers.otp_token_cipher,
+                _ => panic!("Invalid content type"),
+            },
+        )
+        .unwrap();
+
+        match data_entry.content_type.as_str() {
+            "password" => {
+                let password: Password = serde_json::from_str(&unencrypted_content).unwrap();
+                println!("Password: {:?}", password);
+            }
+            "note" => {
+                let note: Note = serde_json::from_str(&unencrypted_content).unwrap();
+                println!("Note: {:?}", note);
+            }
+            "card" => {
+                let card: Card = serde_json::from_str(&unencrypted_content).unwrap();
+                println!("Card: {:?}", card);
+            }
+            "otp_token" => {
+                let otp_token: OtpToken = serde_json::from_str(&unencrypted_content).unwrap();
+                println!("Otp Token: {:?}", otp_token);
+            }
+            _ => panic!("Invalid content type"),
+        }
+    }
+}
+
+pub fn test_enc_req() {
     // Create a reqwest client with a cookie store
     let reqwest_client = reqwest::blocking::Client::builder()
         .cookie_store(true)
@@ -11,8 +66,8 @@ pub fn test_requests() {
     // Register a user
     match requests::register_request(
         "lmao@example.com",
-        "password",
-        "password",
+        "passwordxddd",
+        "passwordxddd",
         &reqwest_client,
         "http://localhost:8080/register",
     ) {
@@ -23,7 +78,7 @@ pub fn test_requests() {
     // Login
     match requests::login_request(
         "lmao@example.com",
-        "password",
+        "passwordxddd",
         &reqwest_client,
         "http://localhost:8080/login",
     ) {
@@ -52,13 +107,17 @@ pub fn test_requests() {
     // Login again
     match requests::login_request(
         "lmao@example.com",
-        "password",
+        "passwordxddd",
         &reqwest_client,
         "http://localhost:8080/login",
     ) {
         Ok(response) => println!("Login response: {:?}", response.data),
         Err(e) => println!("Login failed: {}", e),
     };
+
+    // Generate master ciphers
+    let ciphers =
+        encryption::generate_all_master_ciphers("lmao@example.com", "passwordxddd").unwrap();
 
     // Get user info
     match reqwest_client.get("http://localhost:8080/me").send() {
@@ -67,24 +126,22 @@ pub fn test_requests() {
     }
 
     // Get all data entries
-    let response = requests::get_all_encrypted_data_entries_request(
+    test_print_all_data_entries(
         &reqwest_client,
         "http://localhost:8080/get_all_encrypted_data_entries",
+        &ciphers,
     );
 
-    let data_entries = response.unwrap().data;
+    // Add a new encrypted password
+    let password = create_password_entry(
+        "My Password",
+        "userfella",
+        "newpassword123",
+        "https://example.com",
+        "sometime",
+    );
 
-    println!("Data entries:");
-    for data_entry in data_entries {
-        println!("{:?}", data_entry);
-    }
-
-    // Add a new encrypted data entry
-    let data_entry = EncryptedDataEntry {
-        name: "My Password".to_string(),
-        content: "savedpassword1738".to_string(),
-        content_type: "password".to_string(),
-    };
+    let data_entry = encrypt_password_entry(password, &ciphers.password_cipher).unwrap();
 
     match requests::add_encrypted_data_entry_request(
         data_entry,
@@ -96,24 +153,16 @@ pub fn test_requests() {
     };
 
     // Get all data entries again
-    let response = requests::get_all_encrypted_data_entries_request(
+    test_print_all_data_entries(
         &reqwest_client,
         "http://localhost:8080/get_all_encrypted_data_entries",
+        &ciphers,
     );
-
-    let data_entries = response.unwrap();
-
-    println!("Data entries:");
-    for data_entry in data_entries.data {
-        println!("{:?}", data_entry);
-    }
 
     // Add another encrypted data entry
-    let data_entry = EncryptedDataEntry {
-        name: "My Note".to_string(),
-        content: "This is a note".to_string(),
-        content_type: "note".to_string(),
-    };
+    let note = create_note_entry("My Note", "This is a note");
+
+    let data_entry = encrypt_note_entry(note, &ciphers.note_cipher).unwrap();
 
     match requests::add_encrypted_data_entry_request(
         data_entry,
@@ -125,23 +174,27 @@ pub fn test_requests() {
     };
 
     // Get all data entries again
-    let response = requests::get_all_encrypted_data_entries_request(
+    test_print_all_data_entries(
         &reqwest_client,
         "http://localhost:8080/get_all_encrypted_data_entries",
+        &ciphers,
     );
 
-    let data_entries = response.unwrap();
-
-    println!("Data entries:");
-    for data_entry in data_entries.data {
-        println!("{:?}", data_entry);
-    }
-
     // Update an encrypted data entry
+    let password = create_password_entry(
+        "Our Password",
+        "userhomie",
+        "changedpass246",
+        "https://imample.com",
+        "sometime",
+    );
+
+    let data_entry = encrypt_password_entry(password, &ciphers.password_cipher).unwrap();
+
     match requests::update_encrypted_data_entry_request(
         "My Password",
-        "My Password",
-        "newpassword1738",
+        "Our Password",
+        data_entry,
         "password",
         &reqwest_client,
         "http://localhost:8080/update_encrypted_data_entry",
@@ -151,17 +204,11 @@ pub fn test_requests() {
     };
 
     // Get all data entries again
-    let response = requests::get_all_encrypted_data_entries_request(
+    test_print_all_data_entries(
         &reqwest_client,
         "http://localhost:8080/get_all_encrypted_data_entries",
+        &ciphers,
     );
-
-    let data_entries = response.unwrap();
-
-    println!("Data entries:");
-    for data_entry in data_entries.data {
-        println!("{:?}", data_entry);
-    }
 
     // Delete an encrypted data entry
     match requests::delete_encrypted_data_entry_request(
@@ -175,15 +222,9 @@ pub fn test_requests() {
     };
 
     // Get all data entries again
-    let response = requests::get_all_encrypted_data_entries_request(
+    test_print_all_data_entries(
         &reqwest_client,
         "http://localhost:8080/get_all_encrypted_data_entries",
+        &ciphers,
     );
-
-    let data_entries = response.unwrap();
-
-    println!("Data entries:");
-    for data_entry in data_entries.data {
-        println!("{:?}", data_entry);
-    }
 }

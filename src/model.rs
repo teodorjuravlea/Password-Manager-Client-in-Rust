@@ -1,3 +1,4 @@
+use aes_gcm_siv::Aes256GcmSiv;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +21,36 @@ pub struct ChangePasswordRequest {
     pub new_password: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct AddEncryptedDataEntryRequest {
+    pub name: String,
+    pub content: Vec<u8>,
+    pub nonce: Vec<u8>,
+    pub content_type: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdateEncryptedDataEntryRequest {
+    pub content_type: String,
+    pub old_name: String,
+    pub new_name: String,
+    pub new_content: Vec<u8>,
+    pub new_nonce: Vec<u8>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DeleteEncryptedDataEntryRequest {
+    pub name: String,
+    pub content_type: String,
+}
+
 // Response structures
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    pub status: String,
+    pub message: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FilteredUser {
     pub email: String,
@@ -29,21 +59,36 @@ pub struct FilteredUser {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct UserData {
-    pub user: FilteredUser,
+pub struct UserResponse {
+    pub status: String,
+    pub data: FilteredUser,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct UserResponse {
-    pub data: UserData,
+pub struct ServerResponse {
     pub status: String,
+    pub data: Box<serde_json::value::RawValue>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EncryptedDataEntryResponse {
+    pub status: String,
+    pub data: EncryptedDataEntry,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetAllEncryptedDataEntriesResponse {
+    pub status: String,
+    pub data: Vec<EncryptedDataEntry>,
 }
 
 // Data structures
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Password {
     pub name: String,
+    pub username: String,
     pub password: String,
+    pub url: String,
     pub expiration_date: String,
     pub created_at: String,
 }
@@ -71,7 +116,31 @@ pub struct OtpToken {
     pub token: String,
 }
 
+pub struct Ciphers {
+    pub password_cipher: Aes256GcmSiv,
+    pub note_cipher: Aes256GcmSiv,
+    pub card_cipher: Aes256GcmSiv,
+    pub otp_token_cipher: Aes256GcmSiv,
+}
+
+pub struct DataVault {
+    pub ciphers: Ciphers,
+    pub passwords: Vec<Password>,
+    pub notes: Vec<Note>,
+    pub cards: Vec<Card>,
+    pub otp_tokens: Vec<OtpToken>,
+}
+
 // Encrypted data structures
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EncryptedDataEntry {
+    pub name: String,
+    pub content: Vec<u8>,
+    pub nonce: Vec<u8>,
+    pub content_type: String,
+}
+
+/*
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EncryptedPassword {
     pub name: String,
@@ -102,3 +171,4 @@ pub struct EncryptedOtpToken {
     pub name: String,
     pub token: String,
 }
+*/

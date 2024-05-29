@@ -4,7 +4,9 @@ pub fn is_password_valid(password: &str) -> bool {
 }
 
 pub fn is_email_valid(email: &str) -> bool {
-    let re = match regex::Regex::new(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$") {
+    let re = match regex::Regex::new(
+        r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})",
+    ) {
         Ok(re) => re,
         Err(_) => return false,
     };
