@@ -16,5 +16,6 @@ struct AppState {
 
 fn main() {
     //tests::test_encryption::test_encryption();
-    tests::test_enc_req::test_enc_req();
+    //tests::test_enc_req::test_enc_req();
+    tests::test_gui::test_gui();
 }
