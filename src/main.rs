@@ -1,6 +1,7 @@
 use model::DataVault;
 use reqwest::blocking::Client;
 
+pub mod constraints;
 pub mod encryption;
 pub mod entries;
 pub mod gui;
@@ -9,15 +10,32 @@ pub mod requests;
 pub mod tests;
 pub mod totp;
 
-struct AppState {
+pub struct AppState {
     client: Client,
-    url: String,
-    vault: DataVault,
+    base_url: String,
+    vault: Option<DataVault>,
 }
 
 fn main() {
     //tests::test_encryption::test_encryption();
-    //tests::test_enc_req::test_enc_req();
-    //tests::test_gui::test_gui();
-    tests::test_totp::test_totp();
+    tests::test_enc_req::test_enc_req();
+    let reqwest_client = match reqwest::blocking::Client::builder()
+        .cookie_store(true)
+        .build()
+    {
+        Ok(client) => client,
+        Err(e) => {
+            println!("Failed to create reqwest client: {}", e);
+            return;
+        }
+    };
+
+    let state = AppState {
+        client: reqwest_client,
+        base_url: "http://localhost:8080".to_string(),
+        vault: None,
+    };
+
+    //tests::test_gui::test_gui(state);
+    //tests::test_totp::test_totp();
 }

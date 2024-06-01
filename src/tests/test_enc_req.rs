@@ -10,13 +10,10 @@ use crate::requests;
 
 pub fn test_print_all_data_entries(
     client: &reqwest::blocking::Client,
-    url: &str,
+    base_url: &str,
     ciphers: &Ciphers,
 ) {
-    let response = requests::get_all_encrypted_data_entries_request(
-        &client,
-        "http://localhost:8080/get_all_encrypted_data_entries",
-    );
+    let response = requests::get_all_encrypted_data_entries_request(client, base_url);
 
     let data_entries = response.unwrap().data;
 
@@ -63,13 +60,15 @@ pub fn test_enc_req() {
         .build()
         .unwrap();
 
+    let base_url = "http://localhost:8080".to_string();
+
     // Register a user
     match requests::register_request(
         "lmao@example.com",
         "passwordxddd",
         "passwordxddd",
         &reqwest_client,
-        "http://localhost:8080/register",
+        &base_url,
     ) {
         Ok(response) => println!("Register response: {:?}", response),
         Err(e) => println!("Register failed: {}", e),
@@ -80,7 +79,7 @@ pub fn test_enc_req() {
         "lmao@example.com",
         "passwordxddd",
         &reqwest_client,
-        "http://localhost:8080/login",
+        &base_url,
     ) {
         Ok(response) => println!("Login response: {:?}", response),
         Err(e) => println!("Login failed: {}", e),
@@ -93,7 +92,7 @@ pub fn test_enc_req() {
     }
 
     // Logout
-    match requests::logout_request(&reqwest_client, "http://localhost:8080/logout") {
+    match requests::logout_request(&reqwest_client, &base_url) {
         Ok(response) => println!("Logout response: {:?}", response),
         Err(e) => println!("Logout failed: {}", e),
     };
@@ -109,9 +108,9 @@ pub fn test_enc_req() {
         "lmao@example.com",
         "passwordxddd",
         &reqwest_client,
-        "http://localhost:8080/login",
+        &base_url,
     ) {
-        Ok(response) => println!("Login response: {:?}", response.data),
+        Ok(response) => println!("Login response: {:?}", response),
         Err(e) => println!("Login failed: {}", e),
     };
 
@@ -126,11 +125,7 @@ pub fn test_enc_req() {
     }
 
     // Get all data entries
-    test_print_all_data_entries(
-        &reqwest_client,
-        "http://localhost:8080/get_all_encrypted_data_entries",
-        &ciphers,
-    );
+    test_print_all_data_entries(&reqwest_client, &base_url, &ciphers);
 
     // Add a new encrypted password
     let password = create_password_entry(
@@ -143,42 +138,26 @@ pub fn test_enc_req() {
 
     let data_entry = encrypt_password_entry(password, &ciphers.password_cipher).unwrap();
 
-    match requests::add_encrypted_data_entry_request(
-        data_entry,
-        &reqwest_client,
-        "http://localhost:8080/add_encrypted_data_entry",
-    ) {
+    match requests::add_encrypted_data_entry_request(data_entry, &reqwest_client, &base_url) {
         Ok(response) => println!("Add encrypted data entry response: {:?}", response),
         Err(e) => println!("Add encrypted data entry failed: {}", e),
     };
 
     // Get all data entries again
-    test_print_all_data_entries(
-        &reqwest_client,
-        "http://localhost:8080/get_all_encrypted_data_entries",
-        &ciphers,
-    );
+    test_print_all_data_entries(&reqwest_client, &base_url, &ciphers);
 
     // Add another encrypted data entry
     let note = create_note_entry("My Note", "This is a note");
 
     let data_entry = encrypt_note_entry(note, &ciphers.note_cipher).unwrap();
 
-    match requests::add_encrypted_data_entry_request(
-        data_entry,
-        &reqwest_client,
-        "http://localhost:8080/add_encrypted_data_entry",
-    ) {
+    match requests::add_encrypted_data_entry_request(data_entry, &reqwest_client, &base_url) {
         Ok(response) => println!("Add encrypted data entry response: {:?}", response),
         Err(e) => println!("Add encrypted data entry failed: {}", e),
     };
 
     // Get all data entries again
-    test_print_all_data_entries(
-        &reqwest_client,
-        "http://localhost:8080/get_all_encrypted_data_entries",
-        &ciphers,
-    );
+    test_print_all_data_entries(&reqwest_client, &base_url, &ciphers);
 
     // Update an encrypted data entry
     let password = create_password_entry(
@@ -197,34 +176,26 @@ pub fn test_enc_req() {
         data_entry,
         "password",
         &reqwest_client,
-        "http://localhost:8080/update_encrypted_data_entry",
+        &base_url,
     ) {
         Ok(response) => println!("Update encrypted data entry response: {:?}", response),
         Err(e) => println!("Update encrypted data entry failed: {}", e),
     };
 
     // Get all data entries again
-    test_print_all_data_entries(
-        &reqwest_client,
-        "http://localhost:8080/get_all_encrypted_data_entries",
-        &ciphers,
-    );
+    test_print_all_data_entries(&reqwest_client, &base_url, &ciphers);
 
     // Delete an encrypted data entry
     match requests::delete_encrypted_data_entry_request(
         "My Note",
         "note",
         &reqwest_client,
-        "http://localhost:8080/delete_encrypted_data_entry",
+        &base_url,
     ) {
         Ok(response) => println!("Delete encrypted data entry response: {:?}", response),
         Err(e) => println!("Delete encrypted data entry failed: {}", e),
     };
 
     // Get all data entries again
-    test_print_all_data_entries(
-        &reqwest_client,
-        "http://localhost:8080/get_all_encrypted_data_entries",
-        &ciphers,
-    );
+    test_print_all_data_entries(&reqwest_client, &base_url, &ciphers);
 }

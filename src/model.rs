@@ -2,6 +2,8 @@ use aes_gcm_siv::Aes256GcmSiv;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::encryption::generate_all_master_ciphers;
+
 // Request structures
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginRequest {
@@ -65,9 +67,8 @@ pub struct UserResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ServerResponse {
+pub struct SimpleResponse {
     pub status: String,
-    pub data: Box<serde_json::value::RawValue>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -136,6 +137,21 @@ pub struct DataVault {
     pub totp_entries: Vec<TOTPEntry>,
 }
 
+impl DataVault {
+    fn new(email: &str, password: &str) -> Result<DataVault, String> {
+        Ok(DataVault {
+            ciphers: match generate_all_master_ciphers(email, password) {
+                Ok(ciphers) => ciphers,
+                Err(e) => return Err(e),
+            },
+            passwords: Vec::new(),
+            notes: Vec::new(),
+            cards: Vec::new(),
+            totp_entries: Vec::new(),
+        })
+    }
+}
+
 // Encrypted data structures
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EncryptedDataEntry {
@@ -144,36 +160,3 @@ pub struct EncryptedDataEntry {
     pub nonce: Vec<u8>,
     pub content_type: String,
 }
-
-/*
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EncryptedPassword {
-    pub name: String,
-    pub password: String,
-    pub expiration_date: String,
-    pub created_at: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EncryptedNote {
-    pub name: String,
-    pub content: String,
-    pub created_at: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EncryptedCard {
-    pub name: String,
-    pub cardholder_name: String,
-    pub card_number: String,
-    pub security_code: String,
-    pub expiration_date: String,
-    pub created_at: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EncryptedOtpToken {
-    pub name: String,
-    pub token: String,
-}
-*/

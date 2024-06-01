@@ -1,3 +1,5 @@
+use crate::requests::{login_request, register_request};
+use crate::AppState;
 use gtk::prelude::*;
 use relm4::{prelude::*, Sender};
 
@@ -16,27 +18,25 @@ struct AuthPrompt {
     register_email: gtk::EntryBuffer,
     register_password1: gtk::EntryBuffer,
     register_password2: gtk::EntryBuffer,
+
+    app_state: AppState,
 }
 
 #[derive(Debug)]
 enum AuthMsg {
     SetMode(AuthAppMode),
-
-    LoginAccept,
-    LoginFail,
-
-    RegisterAccept,
-    RegisterFail,
+    LoginPress,
+    RegisterPress,
 }
 
 #[relm4::component]
 impl SimpleComponent for AuthPrompt {
-    type Init = ();
+    type Init = AppState;
     type Input = AuthMsg;
     type Output = AuthMsg;
 
     view! {
-        dialog = libadwaita::ApplicationWindow {
+        auth_window = libadwaita::ApplicationWindow {
             set_margin_all: 20,
             set_modal: true,
             set_title: Some("Authentication"),
@@ -95,7 +95,7 @@ impl SimpleComponent for AuthPrompt {
                     gtk::Button {
                         set_margin_all: 40,
                         set_label: "Login",
-                        connect_clicked => AuthMsg::LoginAccept
+                        connect_clicked => AuthMsg::LoginPress
                     }
                 },
 
@@ -132,7 +132,7 @@ impl SimpleComponent for AuthPrompt {
                     gtk::Button {
                         set_margin_all: 40,
                         set_label: "Register",
-                        connect_clicked => AuthMsg::RegisterAccept
+                        connect_clicked => AuthMsg::RegisterPress
                     }
                 },
             },
@@ -140,11 +140,13 @@ impl SimpleComponent for AuthPrompt {
     }
 
     fn init(
-        _: Self::Init,
+        state: Self::Init,
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = AuthPrompt {
+            app_state: state,
+
             mode: AuthAppMode::Login,
 
             login_email: gtk::EntryBuffer::default(),
@@ -164,29 +166,58 @@ impl SimpleComponent for AuthPrompt {
             AuthMsg::SetMode(mode) => {
                 self.mode = mode;
             }
-            AuthMsg::LoginAccept => {
+            AuthMsg::LoginPress => {
                 //sender.output(self.email.text().into()).unwrap();
                 //sender.output(self.password.text().into()).unwrap();
                 display_input(
                     self.login_email.text().into(),
                     self.login_password.text().into(),
                 );
-            }
-            AuthMsg::LoginFail => {
-                println!("Login failed");
+
+                let email = self.login_email.text();
+                let password = self.login_password.text();
+
+                match login_request(
+                    &email,
+                    &password,
+                    &self.app_state.client,
+                    &self.app_state.base_url,
+                ) {
+                    Ok(response) => {
+                        println!("Login successful: {}", response.status);
+                    }
+                    Err(e) => {
+                        println!("Login failed: {}", e);
+                    }
+                }
             }
 
-            AuthMsg::RegisterAccept => {
+            AuthMsg::RegisterPress => {
                 //sender.output(self.email.text().into()).unwrap();
                 //sender.output(self.password.text().into()).unwrap();
                 display_input(
                     self.register_email.text().into(),
                     self.register_password1.text().into(),
                 );
-            }
 
-            AuthMsg::RegisterFail => {
-                println!("Register failed");
+                let email = self.register_email.text();
+                let password1 = self.register_password1.text();
+                let password2 = self.register_password2.text();
+
+                match register_request(
+                    &email,
+                    &password1,
+                    &password2,
+                    &self.app_state.client,
+                    &self.app_state.base_url,
+                ) {
+                    Ok(response) => {
+                        println!("Register successful: {}", response.status);
+                    }
+                    Err(e) => {
+                        println!("Register failed: {}", e);
+                    }
+                }
             }
         }
     }
@@ -196,9 +227,9 @@ impl SimpleComponent for AuthPrompt {
     }
 }
 
-pub fn run_login_prompt() {
+pub fn run_login_prompt(state: AppState) {
     let login_prompt = RelmApp::new("login_prompt");
-    login_prompt.run::<AuthPrompt>(());
+    login_prompt.run::<AuthPrompt>(state);
 }
 
 pub fn display_input(email: String, password: String) {
