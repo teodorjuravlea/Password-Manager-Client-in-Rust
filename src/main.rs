@@ -7,6 +7,7 @@ pub mod gui;
 pub mod model;
 pub mod requests;
 pub mod tests;
+pub mod totp;
 
 struct AppState {
     client: Client,
@@ -17,5 +18,6 @@ struct AppState {
 fn main() {
     //tests::test_encryption::test_encryption();
     //tests::test_enc_req::test_enc_req();
-    tests::test_gui::test_gui();
+    //tests::test_gui::test_gui();
+    tests::test_totp::test_totp();
 }

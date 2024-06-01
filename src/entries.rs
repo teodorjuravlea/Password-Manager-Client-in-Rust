@@ -1,5 +1,5 @@
 use crate::encryption::{decrypt_data_entry, encrypt_data_entry};
-use crate::model::{Card, EncryptedDataEntry, Note, OtpToken, Password};
+use crate::model::{Card, EncryptedDataEntry, Note, Password, TOTPEntry};
 use aes_gcm_siv::Aes256GcmSiv;
 
 // Create entry functions
@@ -100,6 +100,26 @@ pub fn encrypt_card_entry(card: Card, cipher: &Aes256GcmSiv) -> Result<Encrypted
     }
 }
 
+pub fn encrypt_totp_entry(
+    totp_entry: TOTPEntry,
+    cipher: &Aes256GcmSiv,
+) -> Result<EncryptedDataEntry, String> {
+    let serialized_data = match serde_json::to_string(&totp_entry) {
+        Ok(data) => data,
+        Err(e) => return Err(format!("Failed to serialize TOTP entry: {}", e)),
+    };
+
+    match encrypt_data_entry(&serialized_data, cipher) {
+        Ok((content, nonce)) => Ok(EncryptedDataEntry {
+            name: totp_entry.name,
+            content,
+            nonce,
+            content_type: "totp_entry".to_string(),
+        }),
+        Err(e) => Err(e),
+    }
+}
+
 // Decrypt entry functions
 pub fn decrypt_password_entry(
     encrypted_data_entry: EncryptedDataEntry,
@@ -135,6 +155,19 @@ pub fn decrypt_card_entry(
         Ok(data) => match serde_json::from_str::<Card>(&data) {
             Ok(card) => Ok(card),
             Err(e) => Err(format!("Failed to deserialize card: {}", e)),
+        },
+        Err(e) => Err(e),
+    }
+}
+
+pub fn decrypt_totp_entry(
+    encrypted_data_entry: EncryptedDataEntry,
+    cipher: &Aes256GcmSiv,
+) -> Result<TOTPEntry, String> {
+    match decrypt_data_entry(encrypted_data_entry, cipher) {
+        Ok(data) => match serde_json::from_str::<TOTPEntry>(&data) {
+            Ok(totp_entry) => Ok(totp_entry),
+            Err(e) => Err(format!("Failed to deserialize TOTP entry: {}", e)),
         },
         Err(e) => Err(e),
     }

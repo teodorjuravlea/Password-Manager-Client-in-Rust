@@ -111,16 +111,21 @@ pub struct Card {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct OtpToken {
+pub struct TOTPEntry {
     pub name: String,
-    pub token: String,
+    pub algorithm: String,
+    pub secret: String,
+    pub digits: usize,
+    pub skew: u8,
+    pub period: u64,
+    pub created_at: String,
 }
 
 pub struct Ciphers {
     pub password_cipher: Aes256GcmSiv,
     pub note_cipher: Aes256GcmSiv,
     pub card_cipher: Aes256GcmSiv,
-    pub otp_token_cipher: Aes256GcmSiv,
+    pub totp_entry_cipher: Aes256GcmSiv,
 }
 
 pub struct DataVault {
@@ -128,7 +133,7 @@ pub struct DataVault {
     pub passwords: Vec<Password>,
     pub notes: Vec<Note>,
     pub cards: Vec<Card>,
-    pub otp_tokens: Vec<OtpToken>,
+    pub totp_entries: Vec<TOTPEntry>,
 }
 
 // Encrypted data structures

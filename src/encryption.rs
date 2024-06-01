@@ -53,7 +53,7 @@ pub fn generate_all_master_ciphers(email: &str, password: &str) -> Result<Cipher
         Err(e) => return Err(e),
     };
 
-    let otp_token_cipher = match generate_master_cipher(email, password, "otp_token") {
+    let totp_entry_cipher = match generate_master_cipher(email, password, "totp_entry") {
         Ok(cipher) => cipher,
         Err(e) => return Err(e),
     };
@@ -62,7 +62,7 @@ pub fn generate_all_master_ciphers(email: &str, password: &str) -> Result<Cipher
         password_cipher,
         note_cipher,
         card_cipher,
-        otp_token_cipher,
+        totp_entry_cipher,
     })
 }
 pub fn generate_master_cipher(

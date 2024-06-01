@@ -3,8 +3,8 @@ use crate::entries::{
     create_note_entry, create_password_entry, encrypt_note_entry, encrypt_password_entry,
 };
 use crate::model::{
-    Card, Ciphers, EncryptedDataEntry, EncryptedDataEntryResponse, ErrorResponse, Note, OtpToken,
-    Password, UserResponse,
+    Card, Ciphers, EncryptedDataEntry, EncryptedDataEntryResponse, ErrorResponse, Note, Password,
+    TOTPEntry, UserResponse,
 };
 use crate::requests;
 
@@ -28,7 +28,7 @@ pub fn test_print_all_data_entries(
                 "password" => &ciphers.password_cipher,
                 "note" => &ciphers.note_cipher,
                 "card" => &ciphers.card_cipher,
-                "otp_token" => &ciphers.otp_token_cipher,
+                "otp_token" => &ciphers.totp_entry_cipher,
                 _ => panic!("Invalid content type"),
             },
         )
@@ -48,8 +48,8 @@ pub fn test_print_all_data_entries(
                 println!("Card: {:?}", card);
             }
             "otp_token" => {
-                let otp_token: OtpToken = serde_json::from_str(&unencrypted_content).unwrap();
-                println!("Otp Token: {:?}", otp_token);
+                let totp_entry: TOTPEntry = serde_json::from_str(&unencrypted_content).unwrap();
+                println!("TOTP Entry: {:?}", totp_entry);
             }
             _ => panic!("Invalid content type"),
         }
