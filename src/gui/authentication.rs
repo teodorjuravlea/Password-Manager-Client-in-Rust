@@ -1,7 +1,9 @@
+use crate::model::DataVault;
 use crate::requests::{login_request, register_request};
 use crate::AppState;
 use adw::prelude::*;
 use relm4::{component::Connector, prelude::*, Sender};
+use std::rc::Rc;
 
 pub struct ErrorDialog {
     pub error_text: String,
@@ -87,7 +89,7 @@ struct AuthPrompt {
 
     error_dialog: Connector<ErrorDialog>,
 
-    app_state: AppState,
+    app_state: Rc<AppState>,
 }
 
 #[derive(Debug)]
@@ -100,7 +102,7 @@ enum AuthMsg {
 
 #[relm4::component(pub)]
 impl SimpleComponent for AuthPrompt {
-    type Init = AppState;
+    type Init = Rc<AppState>;
     type Input = AuthMsg;
     type Output = AuthMsg;
 
@@ -258,6 +260,19 @@ impl SimpleComponent for AuthPrompt {
                 ) {
                     Ok(response) => {
                         println!("Login successful: {}", response.status);
+
+                        if let Some(app_state) = Rc::get_mut(&mut self.app_state) {
+                            app_state.is_logged_in = true;
+
+                            let data_vault = match DataVault::new(&email, &password) {
+                                Ok(data_vault) => data_vault,
+                                Err(e) => {
+                                    panic!("Error creating data vault: {}", e);
+                                }
+                            };
+
+                            app_state.vault = Some(data_vault);
+                        }
                     }
                     Err(e) => {
                         println!("Login failed: {}", e);
@@ -301,7 +316,7 @@ impl SimpleComponent for AuthPrompt {
     }
 }
 
-pub fn run_login_prompt(state: AppState) {
+pub fn run_login_prompt(state: Rc<AppState>) {
     let login_prompt = RelmApp::new("login_prompt");
     login_prompt.run::<AuthPrompt>(state);
 }

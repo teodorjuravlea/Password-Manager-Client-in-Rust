@@ -2,10 +2,7 @@ use crate::encryption;
 use crate::entries::{
     create_note_entry, create_password_entry, encrypt_note_entry, encrypt_password_entry,
 };
-use crate::model::{
-    Card, Ciphers, EncryptedDataEntry, EncryptedDataEntryResponse, ErrorResponse, Note, Password,
-    TOTPEntry, UserResponse,
-};
+use crate::model::{Card, Ciphers, Note, Password, TOTPEntry};
 use crate::requests;
 
 pub fn test_print_all_data_entries(
@@ -136,7 +133,7 @@ pub fn test_enc_req() {
         "sometime",
     );
 
-    let data_entry = encrypt_password_entry(password, &ciphers.password_cipher).unwrap();
+    let data_entry = encrypt_password_entry(&password, &ciphers.password_cipher).unwrap();
 
     match requests::add_encrypted_data_entry_request(data_entry, &reqwest_client, &base_url) {
         Ok(response) => println!("Add encrypted data entry response: {:?}", response),
@@ -149,7 +146,7 @@ pub fn test_enc_req() {
     // Add another encrypted data entry
     let note = create_note_entry("My Note", "This is a note");
 
-    let data_entry = encrypt_note_entry(note, &ciphers.note_cipher).unwrap();
+    let data_entry = encrypt_note_entry(&note, &ciphers.note_cipher).unwrap();
 
     match requests::add_encrypted_data_entry_request(data_entry, &reqwest_client, &base_url) {
         Ok(response) => println!("Add encrypted data entry response: {:?}", response),
@@ -168,7 +165,7 @@ pub fn test_enc_req() {
         "sometime",
     );
 
-    let data_entry = encrypt_password_entry(password, &ciphers.password_cipher).unwrap();
+    let data_entry = encrypt_password_entry(&password, &ciphers.password_cipher).unwrap();
 
     match requests::update_encrypted_data_entry_request(
         "My Password",

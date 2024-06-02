@@ -1,5 +1,8 @@
 use crate::encryption::{decrypt_data_entry, encrypt_data_entry};
-use crate::model::{Card, EncryptedDataEntry, Note, Password, TOTPEntry};
+use crate::model::{
+    Card, Ciphers, DataVault, EncryptedDataEntry, EntriesVault, GetAllEncryptedDataEntriesResponse,
+    Note, Password, TOTPEntry,
+};
 use aes_gcm_siv::Aes256GcmSiv;
 
 // Create entry functions
@@ -47,7 +50,7 @@ pub fn create_card_entry(
 
 // Encrypt entry functions
 pub fn encrypt_password_entry(
-    password: Password,
+    password: &Password,
     cipher: &Aes256GcmSiv,
 ) -> Result<EncryptedDataEntry, String> {
     let serialized_data = match serde_json::to_string(&password) {
@@ -57,7 +60,7 @@ pub fn encrypt_password_entry(
 
     match encrypt_data_entry(&serialized_data, cipher) {
         Ok((content, nonce)) => Ok(EncryptedDataEntry {
-            name: password.name,
+            name: password.name.clone(),
             content,
             nonce,
             content_type: "password".to_string(),
@@ -66,7 +69,10 @@ pub fn encrypt_password_entry(
     }
 }
 
-pub fn encrypt_note_entry(note: Note, cipher: &Aes256GcmSiv) -> Result<EncryptedDataEntry, String> {
+pub fn encrypt_note_entry(
+    note: &Note,
+    cipher: &Aes256GcmSiv,
+) -> Result<EncryptedDataEntry, String> {
     let serialized_data = match serde_json::to_string(&note) {
         Ok(data) => data,
         Err(e) => return Err(format!("Failed to serialize note: {}", e)),
@@ -74,7 +80,7 @@ pub fn encrypt_note_entry(note: Note, cipher: &Aes256GcmSiv) -> Result<Encrypted
 
     match encrypt_data_entry(&serialized_data, cipher) {
         Ok((content, nonce)) => Ok(EncryptedDataEntry {
-            name: note.name,
+            name: note.name.clone(),
             content,
             nonce,
             content_type: "note".to_string(),
@@ -83,7 +89,10 @@ pub fn encrypt_note_entry(note: Note, cipher: &Aes256GcmSiv) -> Result<Encrypted
     }
 }
 
-pub fn encrypt_card_entry(card: Card, cipher: &Aes256GcmSiv) -> Result<EncryptedDataEntry, String> {
+pub fn encrypt_card_entry(
+    card: &Card,
+    cipher: &Aes256GcmSiv,
+) -> Result<EncryptedDataEntry, String> {
     let serialized_data = match serde_json::to_string(&card) {
         Ok(data) => data,
         Err(e) => return Err(format!("Failed to serialize card: {}", e)),
@@ -91,7 +100,7 @@ pub fn encrypt_card_entry(card: Card, cipher: &Aes256GcmSiv) -> Result<Encrypted
 
     match encrypt_data_entry(&serialized_data, cipher) {
         Ok((content, nonce)) => Ok(EncryptedDataEntry {
-            name: card.name,
+            name: card.name.clone(),
             content,
             nonce,
             content_type: "card".to_string(),
@@ -101,7 +110,7 @@ pub fn encrypt_card_entry(card: Card, cipher: &Aes256GcmSiv) -> Result<Encrypted
 }
 
 pub fn encrypt_totp_entry(
-    totp_entry: TOTPEntry,
+    totp_entry: &TOTPEntry,
     cipher: &Aes256GcmSiv,
 ) -> Result<EncryptedDataEntry, String> {
     let serialized_data = match serde_json::to_string(&totp_entry) {
@@ -111,7 +120,7 @@ pub fn encrypt_totp_entry(
 
     match encrypt_data_entry(&serialized_data, cipher) {
         Ok((content, nonce)) => Ok(EncryptedDataEntry {
-            name: totp_entry.name,
+            name: totp_entry.name.clone(),
             content,
             nonce,
             content_type: "totp_entry".to_string(),
@@ -171,4 +180,83 @@ pub fn decrypt_totp_entry(
         },
         Err(e) => Err(e),
     }
+}
+
+// Vault functions
+pub fn fill_data_vault_from_response(
+    data_vault: &mut DataVault,
+    response: GetAllEncryptedDataEntriesResponse,
+) {
+    for encrypted_data_entry in response.data {
+        match encrypted_data_entry.content_type.as_str() {
+            "password" => {
+                match decrypt_password_entry(
+                    encrypted_data_entry,
+                    &data_vault.ciphers.password_cipher,
+                ) {
+                    Ok(password) => data_vault.entries_vault.passwords.push(password),
+                    Err(e) => println!("{}", e),
+                }
+            }
+            "note" => {
+                match decrypt_note_entry(encrypted_data_entry, &data_vault.ciphers.note_cipher) {
+                    Ok(note) => data_vault.entries_vault.notes.push(note),
+                    Err(e) => println!("{}", e),
+                }
+            }
+            "card" => {
+                match decrypt_card_entry(encrypted_data_entry, &data_vault.ciphers.card_cipher) {
+                    Ok(card) => data_vault.entries_vault.cards.push(card),
+                    Err(e) => println!("{}", e),
+                }
+            }
+            "totp_entry" => {
+                match decrypt_totp_entry(
+                    encrypted_data_entry,
+                    &data_vault.ciphers.totp_entry_cipher,
+                ) {
+                    Ok(totp_entry) => data_vault.entries_vault.totp_entries.push(totp_entry),
+                    Err(e) => println!("{}", e),
+                }
+            }
+            _ => println!(
+                "Unknown content type: {}",
+                encrypted_data_entry.content_type
+            ),
+        }
+    }
+}
+
+pub fn encrypt_entry_vault(
+    entry_vault: &EntriesVault,
+    ciphers: Ciphers,
+) -> Vec<EncryptedDataEntry> {
+    let mut encrypted_entries = Vec::new();
+
+    for password in &entry_vault.passwords {
+        match encrypt_password_entry(password, &ciphers.password_cipher) {
+            Ok(encrypted_entry) => encrypted_entries.push(encrypted_entry),
+            Err(e) => println!("{}", e),
+        }
+    }
+    for note in &entry_vault.notes {
+        match encrypt_note_entry(note, &ciphers.note_cipher) {
+            Ok(encrypted_entry) => encrypted_entries.push(encrypted_entry),
+            Err(e) => println!("{}", e),
+        }
+    }
+    for card in &entry_vault.cards {
+        match encrypt_card_entry(card, &ciphers.card_cipher) {
+            Ok(encrypted_entry) => encrypted_entries.push(encrypted_entry),
+            Err(e) => println!("{}", e),
+        }
+    }
+    for totp_entry in &entry_vault.totp_entries {
+        match encrypt_totp_entry(totp_entry, &ciphers.totp_entry_cipher) {
+            Ok(encrypted_entry) => encrypted_entries.push(encrypted_entry),
+            Err(e) => println!("{}", e),
+        }
+    }
+
+    encrypted_entries
 }

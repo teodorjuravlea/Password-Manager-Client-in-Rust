@@ -24,15 +24,16 @@ pub fn login_request(
 
     let response = client.post(full_url).json(&request).send();
 
+    // TODO: Rework login response parsing
     match response {
         Ok(response) => match response.json::<serde_json::Value>() {
             Ok(json_response) => {
                 let json_response_copy = json_response.clone();
 
-                match serde_json::from_value::<SimpleResponse>(json_response_copy) {
-                    Ok(login_response) => Ok(login_response),
-                    Err(_) => match serde_json::from_value::<ErrorResponse>(json_response) {
-                        Ok(error_response) => Err(error_response.message),
+                match serde_json::from_value::<ErrorResponse>(json_response_copy) {
+                    Ok(error_response) => Err(error_response.message),
+                    Err(_) => match serde_json::from_value::<SimpleResponse>(json_response) {
+                        Ok(login_response) => Ok(login_response),
                         Err(_) => Err("Error parsing response".to_string()),
                     },
                 }
@@ -192,15 +193,16 @@ pub fn delete_encrypted_data_entry_request(
 
     let response = client.post(full_url).json(&request).send();
 
+    // TODO: Rework delete response parsing
     match response {
         Ok(response) => match response.json::<serde_json::Value>() {
             Ok(json_response) => {
                 let json_response_copy = json_response.clone();
 
-                match serde_json::from_value::<SimpleResponse>(json_response_copy) {
-                    Ok(delete_response) => Ok(delete_response),
-                    Err(_) => match serde_json::from_value::<ErrorResponse>(json_response) {
-                        Ok(error_response) => Err(error_response.message),
+                match serde_json::from_value::<ErrorResponse>(json_response_copy) {
+                    Ok(error_response) => Err(error_response.message),
+                    Err(_) => match serde_json::from_value::<SimpleResponse>(json_response) {
+                        Ok(delete_response) => Ok(delete_response),
                         Err(_) => Err("Error parsing response".to_string()),
                     },
                 }

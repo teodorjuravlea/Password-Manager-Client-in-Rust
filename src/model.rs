@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::encryption::generate_all_master_ciphers;
+use crate::entries::fill_data_vault_from_response;
 
 // Request structures
 #[derive(Debug, Serialize, Deserialize)]
@@ -129,26 +130,36 @@ pub struct Ciphers {
     pub totp_entry_cipher: Aes256GcmSiv,
 }
 
-pub struct DataVault {
-    pub ciphers: Ciphers,
+pub struct EntriesVault {
     pub passwords: Vec<Password>,
     pub notes: Vec<Note>,
     pub cards: Vec<Card>,
     pub totp_entries: Vec<TOTPEntry>,
 }
 
+pub struct DataVault {
+    pub ciphers: Ciphers,
+    pub entries_vault: EntriesVault,
+}
+
 impl DataVault {
-    fn new(email: &str, password: &str) -> Result<DataVault, String> {
+    pub fn new(email: &str, password: &str) -> Result<DataVault, String> {
         Ok(DataVault {
             ciphers: match generate_all_master_ciphers(email, password) {
                 Ok(ciphers) => ciphers,
                 Err(e) => return Err(e),
             },
-            passwords: Vec::new(),
-            notes: Vec::new(),
-            cards: Vec::new(),
-            totp_entries: Vec::new(),
+            entries_vault: EntriesVault {
+                passwords: Vec::new(),
+                notes: Vec::new(),
+                cards: Vec::new(),
+                totp_entries: Vec::new(),
+            },
         })
+    }
+
+    pub fn fill(&mut self, encrypted_data_entries_response: GetAllEncryptedDataEntriesResponse) {
+        fill_data_vault_from_response(self, encrypted_data_entries_response);
     }
 }
 
