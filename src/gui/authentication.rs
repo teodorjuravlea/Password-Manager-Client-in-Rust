@@ -1,7 +1,73 @@
 use crate::requests::{login_request, register_request};
 use crate::AppState;
-use gtk::prelude::*;
-use relm4::{prelude::*, Sender};
+use adw::prelude::*;
+use relm4::{component::Connector, prelude::*, Sender};
+
+pub struct ErrorDialog {
+    pub error_text: String,
+    is_active: bool,
+}
+
+#[derive(Debug)]
+pub enum ErrorDialogMsg {
+    LoginFail(String),
+
+    RegisterSuccess,
+    RegisterFail(String),
+}
+
+#[relm4::component(pub)]
+impl SimpleComponent for ErrorDialog {
+    type Init = ();
+    type Input = ErrorDialogMsg;
+    type Output = ();
+
+    view! {
+        #[name = "dialog"]
+        adw::MessageDialog {
+            #[watch]
+            set_visible: model.is_active,
+            #[watch]
+            set_heading: Some(&model.error_text),
+            add_response: ("close", "Close"),
+            set_hide_on_close: true,
+        }
+    }
+
+    fn init(
+        (): Self::Init,
+        root: Self::Root,
+        _sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let model = ErrorDialog {
+            error_text: String::new(),
+            is_active: false,
+        };
+
+        let widgets = view_output!();
+
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+        match msg {
+            ErrorDialogMsg::LoginFail(error_text) => {
+                self.error_text = error_text;
+                self.is_active = true;
+            }
+
+            ErrorDialogMsg::RegisterSuccess => {
+                self.error_text = "Registration successful".to_string();
+                self.is_active = true;
+            }
+
+            ErrorDialogMsg::RegisterFail(error_text) => {
+                self.error_text = error_text;
+                self.is_active = true;
+            }
+        }
+    }
+}
 
 #[derive(Debug)]
 enum AuthAppMode {
@@ -19,24 +85,27 @@ struct AuthPrompt {
     register_password1: gtk::EntryBuffer,
     register_password2: gtk::EntryBuffer,
 
+    error_dialog: Connector<ErrorDialog>,
+
     app_state: AppState,
 }
 
 #[derive(Debug)]
 enum AuthMsg {
     SetMode(AuthAppMode),
+
     LoginPress,
     RegisterPress,
 }
 
-#[relm4::component]
+#[relm4::component(pub)]
 impl SimpleComponent for AuthPrompt {
     type Init = AppState;
     type Input = AuthMsg;
     type Output = AuthMsg;
 
     view! {
-        auth_window = libadwaita::ApplicationWindow {
+        adw::ApplicationWindow {
             set_margin_all: 20,
             set_modal: true,
             set_title: Some("Authentication"),
@@ -47,7 +116,7 @@ impl SimpleComponent for AuthPrompt {
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
 
-                libadwaita::HeaderBar {
+                adw::HeaderBar {
                     set_show_end_title_buttons: true,
 
                     #[wrap(Some)]
@@ -57,13 +126,17 @@ impl SimpleComponent for AuthPrompt {
                             set_label: "Login",
                             set_has_frame: true,
                             set_active: true,
-                            connect_clicked => AuthMsg::SetMode(AuthAppMode::Login),
+                            connect_clicked[sender] => move |_| {
+                                sender.input(AuthMsg::SetMode(AuthAppMode::Login));
+                            },
                         },
                         gtk::ToggleButton {
                             set_label: "Register",
                             set_has_frame: true,
                             set_group: Some(&group),
-                            connect_clicked => AuthMsg::SetMode(AuthAppMode::Register),
+                            connect_clicked[sender] => move |_| {
+                                sender.input(AuthMsg::SetMode(AuthAppMode::Register));
+                            }
                         },
                     },
                 },
@@ -95,7 +168,9 @@ impl SimpleComponent for AuthPrompt {
                     gtk::Button {
                         set_margin_all: 40,
                         set_label: "Login",
-                        connect_clicked => AuthMsg::LoginPress
+                        connect_clicked[sender] => move |_| {
+                            sender.input(AuthMsg::LoginPress);
+                        }
                     }
                 },
 
@@ -132,7 +207,9 @@ impl SimpleComponent for AuthPrompt {
                     gtk::Button {
                         set_margin_all: 40,
                         set_label: "Register",
-                        connect_clicked => AuthMsg::RegisterPress
+                        connect_clicked[sender] => move |_| {
+                            sender.input(AuthMsg::RegisterPress);
+                        }
                     }
                 },
             },
@@ -155,7 +232,10 @@ impl SimpleComponent for AuthPrompt {
             register_email: gtk::EntryBuffer::default(),
             register_password1: gtk::EntryBuffer::default(),
             register_password2: gtk::EntryBuffer::default(),
+
+            error_dialog: ErrorDialog::builder().transient_for(&root).launch(()),
         };
+
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
@@ -167,13 +247,6 @@ impl SimpleComponent for AuthPrompt {
                 self.mode = mode;
             }
             AuthMsg::LoginPress => {
-                //sender.output(self.email.text().into()).unwrap();
-                //sender.output(self.password.text().into()).unwrap();
-                display_input(
-                    self.login_email.text().into(),
-                    self.login_password.text().into(),
-                );
-
                 let email = self.login_email.text();
                 let password = self.login_password.text();
 
@@ -188,18 +261,14 @@ impl SimpleComponent for AuthPrompt {
                     }
                     Err(e) => {
                         println!("Login failed: {}", e);
+
+                        self.error_dialog
+                            .emit(ErrorDialogMsg::LoginFail(e.to_string()));
                     }
                 }
             }
 
             AuthMsg::RegisterPress => {
-                //sender.output(self.email.text().into()).unwrap();
-                //sender.output(self.password.text().into()).unwrap();
-                display_input(
-                    self.register_email.text().into(),
-                    self.register_password1.text().into(),
-                );
-
                 let email = self.register_email.text();
                 let password1 = self.register_password1.text();
                 let password2 = self.register_password2.text();
@@ -213,9 +282,14 @@ impl SimpleComponent for AuthPrompt {
                 ) {
                     Ok(response) => {
                         println!("Register successful: {}", response.status);
+
+                        self.error_dialog.emit(ErrorDialogMsg::RegisterSuccess);
                     }
                     Err(e) => {
                         println!("Register failed: {}", e);
+
+                        self.error_dialog
+                            .emit(ErrorDialogMsg::RegisterFail(e.to_string()));
                     }
                 }
             }
@@ -230,8 +304,4 @@ impl SimpleComponent for AuthPrompt {
 pub fn run_login_prompt(state: AppState) {
     let login_prompt = RelmApp::new("login_prompt");
     login_prompt.run::<AuthPrompt>(state);
-}
-
-pub fn display_input(email: String, password: String) {
-    println!("{} {}", email, password);
 }

@@ -18,7 +18,7 @@ pub struct AppState {
 
 fn main() {
     //tests::test_encryption::test_encryption();
-    tests::test_enc_req::test_enc_req();
+    //tests::test_enc_req::test_enc_req();
     let reqwest_client = match reqwest::blocking::Client::builder()
         .cookie_store(true)
         .build()
@@ -36,6 +36,6 @@ fn main() {
         vault: None,
     };
 
-    //tests::test_gui::test_gui(state);
+    tests::test_gui::test_gui(state);
     //tests::test_totp::test_totp();
 }
