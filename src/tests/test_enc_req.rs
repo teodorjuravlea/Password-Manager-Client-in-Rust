@@ -17,7 +17,7 @@ pub fn test_print_all_data_entries(
     println!("Data entries:");
     for data_entry in data_entries {
         let unencrypted_content = encryption::decrypt_data_entry(
-            data_entry.clone(),
+            &data_entry.clone(),
             match data_entry.content_type.as_str() {
                 "password" => &ciphers.password_cipher,
                 "note" => &ciphers.note_cipher,

@@ -1,9 +1,12 @@
+use std::sync::Mutex;
+
 use crate::encryption::{decrypt_data_entry, encrypt_data_entry};
 use crate::model::{
     Card, Ciphers, DataVault, EncryptedDataEntry, EntriesVault, GetAllEncryptedDataEntriesResponse,
     Note, Password, TOTPEntry,
 };
 use aes_gcm_siv::Aes256GcmSiv;
+use rayon::prelude::*;
 
 // Create entry functions
 pub fn create_password_entry(
@@ -131,7 +134,7 @@ pub fn encrypt_totp_entry(
 
 // Decrypt entry functions
 pub fn decrypt_password_entry(
-    encrypted_data_entry: EncryptedDataEntry,
+    encrypted_data_entry: &EncryptedDataEntry,
     cipher: &Aes256GcmSiv,
 ) -> Result<Password, String> {
     match decrypt_data_entry(encrypted_data_entry, cipher) {
@@ -144,7 +147,7 @@ pub fn decrypt_password_entry(
 }
 
 pub fn decrypt_note_entry(
-    encrypted_data_entry: EncryptedDataEntry,
+    encrypted_data_entry: &EncryptedDataEntry,
     cipher: &Aes256GcmSiv,
 ) -> Result<Note, String> {
     match decrypt_data_entry(encrypted_data_entry, cipher) {
@@ -157,7 +160,7 @@ pub fn decrypt_note_entry(
 }
 
 pub fn decrypt_card_entry(
-    encrypted_data_entry: EncryptedDataEntry,
+    encrypted_data_entry: &EncryptedDataEntry,
     cipher: &Aes256GcmSiv,
 ) -> Result<Card, String> {
     match decrypt_data_entry(encrypted_data_entry, cipher) {
@@ -170,7 +173,7 @@ pub fn decrypt_card_entry(
 }
 
 pub fn decrypt_totp_entry(
-    encrypted_data_entry: EncryptedDataEntry,
+    encrypted_data_entry: &EncryptedDataEntry,
     cipher: &Aes256GcmSiv,
 ) -> Result<TOTPEntry, String> {
     match decrypt_data_entry(encrypted_data_entry, cipher) {
@@ -187,26 +190,31 @@ pub fn fill_data_vault_from_response(
     data_vault: &mut DataVault,
     response: GetAllEncryptedDataEntriesResponse,
 ) {
-    for encrypted_data_entry in response.data {
+    let passwords: Mutex<Vec<Password>> = Mutex::new(Vec::new());
+    let notes: Mutex<Vec<Note>> = Mutex::new(Vec::new());
+    let cards: Mutex<Vec<Card>> = Mutex::new(Vec::new());
+    let totp_entries: Mutex<Vec<TOTPEntry>> = Mutex::new(Vec::new());
+
+    response.data.par_iter().for_each(|encrypted_data_entry| {
         match encrypted_data_entry.content_type.as_str() {
             "password" => {
                 match decrypt_password_entry(
                     encrypted_data_entry,
                     &data_vault.ciphers.password_cipher,
                 ) {
-                    Ok(password) => data_vault.entries_vault.passwords.push(password),
+                    Ok(password) => passwords.lock().unwrap().push(password),
                     Err(e) => println!("{}", e),
                 }
             }
             "note" => {
                 match decrypt_note_entry(encrypted_data_entry, &data_vault.ciphers.note_cipher) {
-                    Ok(note) => data_vault.entries_vault.notes.push(note),
+                    Ok(note) => notes.lock().unwrap().push(note),
                     Err(e) => println!("{}", e),
                 }
             }
             "card" => {
                 match decrypt_card_entry(encrypted_data_entry, &data_vault.ciphers.card_cipher) {
-                    Ok(card) => data_vault.entries_vault.cards.push(card),
+                    Ok(card) => cards.lock().unwrap().push(card),
                     Err(e) => println!("{}", e),
                 }
             }
@@ -215,7 +223,7 @@ pub fn fill_data_vault_from_response(
                     encrypted_data_entry,
                     &data_vault.ciphers.totp_entry_cipher,
                 ) {
-                    Ok(totp_entry) => data_vault.entries_vault.totp_entries.push(totp_entry),
+                    Ok(totp_entry) => totp_entries.lock().unwrap().push(totp_entry),
                     Err(e) => println!("{}", e),
                 }
             }
@@ -224,39 +232,58 @@ pub fn fill_data_vault_from_response(
                 encrypted_data_entry.content_type
             ),
         }
-    }
+    });
+
+    let mut password_guard = passwords.lock().unwrap();
+    let mut note_guard = notes.lock().unwrap();
+    let mut card_guard = cards.lock().unwrap();
+    let mut totp_entry_guard = totp_entries.lock().unwrap();
+
+    data_vault
+        .entries_vault
+        .passwords
+        .append(&mut password_guard);
+
+    data_vault.entries_vault.notes.append(&mut note_guard);
+
+    data_vault.entries_vault.cards.append(&mut card_guard);
+
+    data_vault
+        .entries_vault
+        .totp_entries
+        .append(&mut totp_entry_guard);
 }
 
 pub fn encrypt_entry_vault(
     entry_vault: &EntriesVault,
     ciphers: Ciphers,
 ) -> Vec<EncryptedDataEntry> {
-    let mut encrypted_entries = Vec::new();
+    let encrypted_entries = Mutex::new(Vec::new());
 
     for password in &entry_vault.passwords {
         match encrypt_password_entry(password, &ciphers.password_cipher) {
-            Ok(encrypted_entry) => encrypted_entries.push(encrypted_entry),
+            Ok(encrypted_entry) => encrypted_entries.lock().unwrap().push(encrypted_entry),
             Err(e) => println!("{}", e),
         }
     }
     for note in &entry_vault.notes {
         match encrypt_note_entry(note, &ciphers.note_cipher) {
-            Ok(encrypted_entry) => encrypted_entries.push(encrypted_entry),
+            Ok(encrypted_entry) => encrypted_entries.lock().unwrap().push(encrypted_entry),
             Err(e) => println!("{}", e),
         }
     }
     for card in &entry_vault.cards {
         match encrypt_card_entry(card, &ciphers.card_cipher) {
-            Ok(encrypted_entry) => encrypted_entries.push(encrypted_entry),
+            Ok(encrypted_entry) => encrypted_entries.lock().unwrap().push(encrypted_entry),
             Err(e) => println!("{}", e),
         }
     }
     for totp_entry in &entry_vault.totp_entries {
         match encrypt_totp_entry(totp_entry, &ciphers.totp_entry_cipher) {
-            Ok(encrypted_entry) => encrypted_entries.push(encrypted_entry),
+            Ok(encrypted_entry) => encrypted_entries.lock().unwrap().push(encrypted_entry),
             Err(e) => println!("{}", e),
         }
     }
 
-    encrypted_entries
+    encrypted_entries.into_inner().unwrap()
 }

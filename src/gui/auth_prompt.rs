@@ -1,83 +1,18 @@
-use crate::model::DataVault;
-use crate::requests::{login_request, register_request};
+use super::actions::{login_action, register_action};
+use super::auth_response_dialog::AuthResponseDialog;
 use crate::AppState;
 use adw::prelude::*;
 use relm4::{component::Connector, prelude::*, Sender};
+use std::cell::RefCell;
 use std::rc::Rc;
 
-pub struct ErrorDialog {
-    pub error_text: String,
-    is_active: bool,
-}
-
 #[derive(Debug)]
-pub enum ErrorDialogMsg {
-    LoginFail(String),
-
-    RegisterSuccess,
-    RegisterFail(String),
-}
-
-#[relm4::component(pub)]
-impl SimpleComponent for ErrorDialog {
-    type Init = ();
-    type Input = ErrorDialogMsg;
-    type Output = ();
-
-    view! {
-        #[name = "dialog"]
-        adw::MessageDialog {
-            #[watch]
-            set_visible: model.is_active,
-            #[watch]
-            set_heading: Some(&model.error_text),
-            add_response: ("close", "Close"),
-            set_hide_on_close: true,
-        }
-    }
-
-    fn init(
-        (): Self::Init,
-        root: Self::Root,
-        _sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
-        let model = ErrorDialog {
-            error_text: String::new(),
-            is_active: false,
-        };
-
-        let widgets = view_output!();
-
-        ComponentParts { model, widgets }
-    }
-
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
-        match msg {
-            ErrorDialogMsg::LoginFail(error_text) => {
-                self.error_text = error_text;
-                self.is_active = true;
-            }
-
-            ErrorDialogMsg::RegisterSuccess => {
-                self.error_text = "Registration successful".to_string();
-                self.is_active = true;
-            }
-
-            ErrorDialogMsg::RegisterFail(error_text) => {
-                self.error_text = error_text;
-                self.is_active = true;
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-enum AuthAppMode {
+pub enum AuthAppMode {
     Login,
     Register,
 }
 
-struct AuthPrompt {
+pub struct AuthPrompt {
     mode: AuthAppMode,
 
     login_email: gtk::EntryBuffer,
@@ -87,13 +22,13 @@ struct AuthPrompt {
     register_password1: gtk::EntryBuffer,
     register_password2: gtk::EntryBuffer,
 
-    error_dialog: Connector<ErrorDialog>,
+    pub response_dialog: Connector<AuthResponseDialog>,
 
-    app_state: Rc<AppState>,
+    pub app_state: Rc<RefCell<AppState>>,
 }
 
 #[derive(Debug)]
-enum AuthMsg {
+pub enum AuthMsg {
     SetMode(AuthAppMode),
 
     LoginPress,
@@ -102,7 +37,7 @@ enum AuthMsg {
 
 #[relm4::component(pub)]
 impl SimpleComponent for AuthPrompt {
-    type Init = Rc<AppState>;
+    type Init = Rc<RefCell<AppState>>;
     type Input = AuthMsg;
     type Output = AuthMsg;
 
@@ -235,7 +170,9 @@ impl SimpleComponent for AuthPrompt {
             register_password1: gtk::EntryBuffer::default(),
             register_password2: gtk::EntryBuffer::default(),
 
-            error_dialog: ErrorDialog::builder().transient_for(&root).launch(()),
+            response_dialog: AuthResponseDialog::builder()
+                .transient_for(&root)
+                .launch(()),
         };
 
         let widgets = view_output!();
@@ -252,35 +189,7 @@ impl SimpleComponent for AuthPrompt {
                 let email = self.login_email.text();
                 let password = self.login_password.text();
 
-                match login_request(
-                    &email,
-                    &password,
-                    &self.app_state.client,
-                    &self.app_state.base_url,
-                ) {
-                    Ok(response) => {
-                        println!("Login successful: {}", response.status);
-
-                        if let Some(app_state) = Rc::get_mut(&mut self.app_state) {
-                            app_state.is_logged_in = true;
-
-                            let data_vault = match DataVault::new(&email, &password) {
-                                Ok(data_vault) => data_vault,
-                                Err(e) => {
-                                    panic!("Error creating data vault: {}", e);
-                                }
-                            };
-
-                            app_state.vault = Some(data_vault);
-                        }
-                    }
-                    Err(e) => {
-                        println!("Login failed: {}", e);
-
-                        self.error_dialog
-                            .emit(ErrorDialogMsg::LoginFail(e.to_string()));
-                    }
-                }
+                login_action(&email, &password, self);
             }
 
             AuthMsg::RegisterPress => {
@@ -288,35 +197,13 @@ impl SimpleComponent for AuthPrompt {
                 let password1 = self.register_password1.text();
                 let password2 = self.register_password2.text();
 
-                match register_request(
-                    &email,
-                    &password1,
-                    &password2,
-                    &self.app_state.client,
-                    &self.app_state.base_url,
-                ) {
-                    Ok(response) => {
-                        println!("Register successful: {}", response.status);
-
-                        self.error_dialog.emit(ErrorDialogMsg::RegisterSuccess);
-                    }
-                    Err(e) => {
-                        println!("Register failed: {}", e);
-
-                        self.error_dialog
-                            .emit(ErrorDialogMsg::RegisterFail(e.to_string()));
-                    }
-                }
+                register_action(&email, &password1, &password2, self);
             }
         }
     }
-
-    fn shutdown(&mut self, _widgets: &mut Self::Widgets, _output: Sender<Self::Output>) {
-        println!("AuthPrompt shutdown");
-    }
 }
 
-pub fn run_login_prompt(state: Rc<AppState>) {
-    let login_prompt = RelmApp::new("login_prompt");
-    login_prompt.run::<AuthPrompt>(state);
+pub fn run_auth_prompt(state: Rc<RefCell<AppState>>) {
+    let auth_prompt = RelmApp::new("auth_prompt");
+    auth_prompt.run::<AuthPrompt>(state);
 }

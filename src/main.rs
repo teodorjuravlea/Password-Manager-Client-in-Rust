@@ -2,7 +2,7 @@ use entries::fill_data_vault_from_response;
 use model::DataVault;
 use requests::get_all_encrypted_data_entries_request;
 use reqwest::blocking::Client;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 pub mod constraints;
 pub mod encryption;
@@ -22,9 +22,6 @@ pub struct AppState {
 }
 
 fn main() {
-    //tests::test_encryption::test_encryption();
-    //tests::test_enc_req::test_enc_req();
-
     // Create a reqwest client with a cookie store
     let reqwest_client = match reqwest::blocking::Client::builder()
         .cookie_store(true)
@@ -38,46 +35,78 @@ fn main() {
     };
 
     // Initialize the app state as a shared resource
-    let mut state = Rc::new(AppState {
+    let state = Rc::new(RefCell::new(AppState {
         client: reqwest_client,
         base_url: "http://localhost:8080".to_string(),
         vault: None,
         is_logged_in: false,
-    });
+    }));
 
-    //tests::test_gui::test_gui(state.clone());
+    // Run the auth prompt
+    //gui::auth_prompt::run_auth_prompt(state.clone());
 
-    // Run the login prompt
-    gui::authentication::run_login_prompt(state.clone());
+    // Manual auth
+    {
+        match requests::register_request(
+            "lmao@example.com",
+            "passwordxddd",
+            "passwordxddd",
+            &state.borrow().client,
+            &state.borrow().base_url,
+        ) {
+            Ok(response) => println!("Register response: {:?}", response),
+            Err(e) => println!("Register failed: {}", e),
+        };
 
-    if !state.is_logged_in {
-        return;
-    }
+        // Login
+        match requests::login_request(
+            "lmao@example.com",
+            "passwordxddd",
+            &state.borrow().client,
+            &state.borrow().base_url,
+        ) {
+            Ok(response) => println!("Login response: {:?}", response),
+            Err(e) => println!("Login failed: {}", e),
+        };
 
-    let encrypted_entries_response =
-        match get_all_encrypted_data_entries_request(&state.client, &state.base_url) {
-            Ok(encrypted_entries) => encrypted_entries,
+        state.borrow_mut().is_logged_in = true;
+
+        let data_vault = match DataVault::new("lmao@example.com", "passwordxddd") {
+            Ok(data_vault) => data_vault,
             Err(e) => {
-                println!("Failed to get encrypted entries: {}", e);
-                return;
+                panic!("Error creating data vault: {}", e);
             }
         };
 
-    // Fill the data vault
-    match Rc::get_mut(&mut state) {
-        Some(app_state) => match app_state.vault.as_mut() {
-            Some(vault) => {
-                fill_data_vault_from_response(vault, encrypted_entries_response);
-            }
-            None => {
-                println!("Failed to get mutable reference to data vault");
-                return;
-            }
-        },
-        None => {
-            println!("Failed to get mutable reference to app state");
+        state.borrow_mut().vault = Some(data_vault);
+    }
+
+    if !state.borrow().is_logged_in {
+        return;
+    }
+
+    let encrypted_entries_response = match get_all_encrypted_data_entries_request(
+        &state.borrow().client,
+        &state.borrow().base_url,
+    ) {
+        Ok(encrypted_entries) => encrypted_entries,
+        Err(e) => {
+            println!("Failed to get encrypted entries: {}", e);
             return;
         }
-    }
-    //tests::test_totp::test_totp();
+    };
+
+    // Fill the data vault
+    match state.borrow_mut().vault.as_mut() {
+        Some(vault) => {
+            fill_data_vault_from_response(vault, encrypted_entries_response);
+        }
+        None => {
+            println!("Failed to get mutable reference to data vault");
+            return;
+        }
+    };
+
+    // Run main window
+    gui::main_window::run_main_window(state.clone());
 }

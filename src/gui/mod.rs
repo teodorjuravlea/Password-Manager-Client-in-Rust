@@ -1,2 +1,9 @@
+pub mod actions;
+pub mod add_entry_prompt;
+pub mod add_entry_response_dialog;
 pub mod app;
-pub mod authentication;
+pub mod auth_prompt;
+pub mod auth_response_dialog;
+pub mod entry_list_item;
+pub mod main_window;
+pub mod utils;

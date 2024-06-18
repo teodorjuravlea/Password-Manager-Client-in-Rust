@@ -22,10 +22,10 @@ pub fn encrypt_data_entry(
 }
 
 pub fn decrypt_data_entry(
-    data_entry: EncryptedDataEntry,
+    data_entry: &EncryptedDataEntry,
     cipher: &Aes256GcmSiv,
 ) -> Result<String, String> {
-    let ciphertext = data_entry.content;
+    let ciphertext = &data_entry.content;
     let nonce = Nonce::from_slice(data_entry.nonce.as_slice());
 
     match cipher.decrypt(nonce, ciphertext.as_ref()) {
