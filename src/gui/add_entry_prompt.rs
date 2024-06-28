@@ -149,6 +149,8 @@ impl SimpleComponent for AddEntryPrompt {
                     },
                     gtk::Entry {
                         set_buffer: &model.add_password.password,
+                        set_input_purpose: gtk::InputPurpose::Password,
+                        set_visibility: false,
                     },
 
                     gtk::Label {

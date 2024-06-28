@@ -3,6 +3,7 @@ use crate::gui::utils::make_list_view_wrapper_from_data_vault;
 use crate::AppState;
 use adw::prelude::*;
 use relm4::{prelude::*, typed_view::list::TypedListView};
+use relm4_icons::icon_names;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -47,7 +48,7 @@ impl SimpleComponent for MainWindow {
             set_title: Some("Password Manager"),
             set_resizable: true,
             set_default_size: (1000, 700),
-            set_css_classes: &["background", "csd"],
+            set_css_classes: &["background", "csd", "circular", "accent"],
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -57,45 +58,50 @@ impl SimpleComponent for MainWindow {
 
                     #[wrap(Some)]
                     set_title_widget = &gtk::Box {
-                        add_css_class: "linked",
-                        append: group = &gtk::ToggleButton {
-                            set_label: "Passwords",
-                            set_has_frame: true,
-                            set_active: true,
-                            connect_clicked[sender] => move |_| {
-                                sender.input(MainWindowMsg::SetMode(EntryTypeView::Password));
+                        set_spacing: 20,
 
+                        gtk::Box {
+                            add_css_class: "linked",
+                            append: group = &gtk::ToggleButton {
+                                set_label: "Passwords",
+                                set_has_frame: true,
+                                set_active: true,
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(MainWindowMsg::SetMode(EntryTypeView::Password));
+
+                                },
                             },
-                        },
-                        gtk::ToggleButton {
-                            set_label: "Notes",
-                            set_has_frame: true,
-                            set_group: Some(&group),
-                            connect_clicked[sender] => move |_| {
-                                sender.input(MainWindowMsg::SetMode(EntryTypeView::Note));
-                            }
-                        },
+                            gtk::ToggleButton {
+                                set_label: "Notes",
+                                set_has_frame: true,
+                                set_group: Some(&group),
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(MainWindowMsg::SetMode(EntryTypeView::Note));
+                                }
+                            },
 
-                        gtk::ToggleButton {
-                            set_label: "Cards",
-                            set_has_frame: true,
-                            set_group: Some(&group),
-                            connect_clicked[sender] => move |_| {
-                                sender.input(MainWindowMsg::SetMode(EntryTypeView::Card));
-                            }
-                        },
+                            gtk::ToggleButton {
+                                set_label: "Cards",
+                                set_has_frame: true,
+                                set_group: Some(&group),
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(MainWindowMsg::SetMode(EntryTypeView::Card));
+                                }
+                            },
 
-                        gtk::ToggleButton {
-                            set_label: "OTP",
-                            set_has_frame: true,
-                            set_group: Some(&group),
-                            connect_clicked[sender] => move |_| {
-                                sender.input(MainWindowMsg::SetMode(EntryTypeView::TOTP));
-                            }
+                            gtk::ToggleButton {
+                                set_label: "OTP",
+                                set_has_frame: true,
+                                set_group: Some(&group),
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(MainWindowMsg::SetMode(EntryTypeView::TOTP));
+                                }
+                            },
                         },
 
                         gtk::Button {
                             set_has_frame: true,
+                            set_icon_name: icon_names::PLUS_LARGE,
 
                             connect_clicked[sender] => move |_| {
                                 sender.input(MainWindowMsg::ShowAddEntryPrompt);
@@ -117,9 +123,11 @@ impl SimpleComponent for MainWindow {
                         gtk::ScrolledWindow {
                             set_vexpand: true,
                             set_hexpand: true,
+                            set_has_frame: true,
+                            inline_css: "border: 3px solid gray; border-radius: 6px;",
 
                             #[local_ref]
-                            list_view -> gtk::ListView{
+                            list_view -> gtk::ListView {
                                 set_single_click_activate: true,
                                 connect_activate => move |_, nr| {
                                     println!("Activated: {}", nr);
@@ -137,9 +145,86 @@ impl SimpleComponent for MainWindow {
                         set_vexpand: true,
                         set_hexpand: true,
 
-                        gtk::Label {
-                            set_label: "Entry",
-                        }
+                        // Password View
+                        adw::PreferencesGroup {
+                            set_title: "Password",
+                            #[watch]
+                            set_visible: matches!(model.entry_view, EntryTypeView::Password),
+
+                            add = &adw::EntryRow {
+                                set_title : "Name",
+                                set_editable : false,
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "Username",
+                                set_editable : false,
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "Password",
+                                set_editable : false,
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "URL",
+                                set_editable : false,
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "Expiration Date",
+                                set_editable : false,
+                            },
+                        },
+
+                        // Note View
+                        adw::PreferencesGroup {
+                            set_title: "Note",
+                            #[watch]
+                            set_visible: matches!(model.entry_view, EntryTypeView::Note),
+
+                            add = &adw::EntryRow {
+                                set_title : "Name",
+                                set_editable : false,
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "Content",
+                                set_editable : false,
+                            },
+                        },
+
+                        // Card View
+                        adw::PreferencesGroup {
+                            set_title: "Card",
+                            #[watch]
+                            set_visible: matches!(model.entry_view, EntryTypeView::Card),
+
+                            add = &adw::EntryRow {
+                                set_title : "Name",
+                                set_editable : false,
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "Cardholder Name",
+                                set_editable : false,
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "Card Number",
+                                set_editable : false,
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "Security Code",
+                                set_editable : false,
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "Expiration Date",
+                                set_editable : false,
+                            },
+                        },
                     }
                 }
             }

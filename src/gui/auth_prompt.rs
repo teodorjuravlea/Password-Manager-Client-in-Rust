@@ -101,6 +101,8 @@ impl SimpleComponent for AuthPrompt {
                     },
                     gtk::Entry {
                         set_buffer: &model.login_password,
+                        set_input_purpose: gtk::InputPurpose::Password,
+                        set_visibility: false,
                     },
                     gtk::Button {
                         set_margin_all: 40,
@@ -134,12 +136,16 @@ impl SimpleComponent for AuthPrompt {
                     },
                     gtk::Entry {
                         set_buffer: &model.register_password1,
+                        set_input_purpose: gtk::InputPurpose::Password,
+                        set_visibility: false,
                     },
                     gtk::Label {
                         set_label: "Confirm Password"
                     },
                     gtk::Entry {
                         set_buffer: &model.register_password2,
+                        set_input_purpose: gtk::InputPurpose::Password,
+                        set_visibility: false,
                     },
                     gtk::Button {
                         set_margin_all: 40,

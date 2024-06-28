@@ -1,5 +1,6 @@
 use entries::fill_data_vault_from_response;
 use model::DataVault;
+use relm4_icons::initialize_icons;
 use requests::get_all_encrypted_data_entries_request;
 use reqwest::blocking::Client;
 use std::{cell::RefCell, rc::Rc};
@@ -41,6 +42,8 @@ fn main() {
         vault: None,
         is_logged_in: false,
     }));
+
+    initialize_icons();
 
     // Run the auth prompt
     //gui::auth_prompt::run_auth_prompt(state.clone());
