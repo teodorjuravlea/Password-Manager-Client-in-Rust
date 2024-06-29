@@ -10,11 +10,11 @@ chrono = { version = "0.4.38", features = ["serde"] }
 gtk4 = { version = "0.8.2", features = ["v4_12"] }
 jsonwebtoken = "9.3.0"
 adw = { package = "libadwaita", version = "0.6.0", features = ["v1_5"] }
-regex = "1.10.4"
+regex = "1.10.5"
 relm4 = { version = "0.8.1", features = ["libadwaita"] }
-reqwest = { version = "0.12.4", features = ["blocking", "json", "cookies"] }
-serde = { version = "1.0.198", features = ["derive"] }
-serde_json = { version ="1.0.116", features = ["raw_value"] }
+reqwest = { version = "0.12.5", features = ["blocking", "json", "cookies"] }
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = { version ="1.0.118", features = ["raw_value"] }
 totp-rs = { version = "5.5.1", features = ["zeroize", "steam"] }
 rayon = "1.10.0"
 relm4-icons = { version = "0.8.3", features = ["icon-development-kit"] }
