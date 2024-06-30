@@ -85,7 +85,7 @@ pub struct GetAllEncryptedDataEntriesResponse {
 }
 
 // Data structures
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Password {
     pub name: String,
     pub username: String,
@@ -95,14 +95,14 @@ pub struct Password {
     pub created_at: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Note {
     pub name: String,
     pub content: String,
     pub created_at: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Card {
     pub name: String,
     pub cardholder_name: String,
@@ -112,7 +112,7 @@ pub struct Card {
     pub created_at: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTPEntry {
     pub name: String,
     pub algorithm: String,
@@ -130,6 +130,7 @@ pub struct Ciphers {
     pub totp_entry_cipher: Aes256GcmSiv,
 }
 
+#[derive(Clone)]
 pub struct EntriesVault {
     pub passwords: Vec<Password>,
     pub notes: Vec<Note>,

@@ -8,6 +8,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::add_entry_prompt::{AddEntryPrompt, AddEntryPromptMsg, AddEntryPromptOutput};
+use super::utils::{make_active_entries_data, ActiveEntriesData};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum EntryTypeView {
@@ -23,6 +24,8 @@ pub struct MainWindow {
     entry_view: EntryTypeView,
     list_view_wrapper: TypedListView<EntryListItem, gtk::SingleSelection>,
 
+    active_entries_data: ActiveEntriesData,
+
     add_entry_prompt: Controller<AddEntryPrompt>,
 }
 
@@ -31,6 +34,8 @@ pub enum MainWindowMsg {
     SetMode(EntryTypeView),
 
     NewEntryListItem(EntryListItem),
+
+    SetActiveIndex(u32),
 
     ShowAddEntryPrompt,
 }
@@ -131,6 +136,8 @@ impl SimpleComponent for MainWindow {
                                 set_single_click_activate: true,
                                 connect_activate => move |_, nr| {
                                     println!("Activated: {}", nr);
+
+                                    sender.input(MainWindowMsg::SetActiveIndex(nr));
                                 }
                             }
                         }
@@ -149,31 +156,76 @@ impl SimpleComponent for MainWindow {
                         adw::PreferencesGroup {
                             set_title: "Password",
                             #[watch]
-                            set_visible: matches!(model.entry_view, EntryTypeView::Password),
+                            set_visible: matches!(&model.entry_view, EntryTypeView::Password),
 
                             add = &adw::EntryRow {
                                 set_title : "Name",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(password_data) = &model.active_entries_data.active_password_data {
+                                        &password_data.name
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
 
                             add = &adw::EntryRow {
                                 set_title : "Username",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(password_data) = &model.active_entries_data.active_password_data {
+                                        &password_data.username
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
 
                             add = &adw::EntryRow {
                                 set_title : "Password",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(password_data) = &model.active_entries_data.active_password_data {
+                                        &password_data.password
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
 
                             add = &adw::EntryRow {
                                 set_title : "URL",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(password_data) = &model.active_entries_data.active_password_data {
+                                        &password_data.url
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
 
                             add = &adw::EntryRow {
                                 set_title : "Expiration Date",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(password_data) = &model.active_entries_data.active_password_data {
+                                        &password_data.expiration_date
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
                         },
 
@@ -181,16 +233,34 @@ impl SimpleComponent for MainWindow {
                         adw::PreferencesGroup {
                             set_title: "Note",
                             #[watch]
-                            set_visible: matches!(model.entry_view, EntryTypeView::Note),
+                            set_visible: matches!(&model.entry_view, EntryTypeView::Note),
 
                             add = &adw::EntryRow {
                                 set_title : "Name",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(note_data) = &model.active_entries_data.active_note_data {
+                                        &note_data.name
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
 
                             add = &adw::EntryRow {
                                 set_title : "Content",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(note_data) = &model.active_entries_data.active_note_data {
+                                        &note_data.content
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
                         },
 
@@ -198,31 +268,76 @@ impl SimpleComponent for MainWindow {
                         adw::PreferencesGroup {
                             set_title: "Card",
                             #[watch]
-                            set_visible: matches!(model.entry_view, EntryTypeView::Card),
+                            set_visible: matches!(&model.entry_view, EntryTypeView::Card),
 
                             add = &adw::EntryRow {
                                 set_title : "Name",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(card_data) = &model.active_entries_data.active_card_data {
+                                        &card_data.name
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
 
                             add = &adw::EntryRow {
                                 set_title : "Cardholder Name",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(card_data) = &model.active_entries_data.active_card_data {
+                                        &card_data.cardholder_name
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
 
                             add = &adw::EntryRow {
                                 set_title : "Card Number",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(card_data) = &model.active_entries_data.active_card_data {
+                                        &card_data.card_number
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
 
                             add = &adw::EntryRow {
                                 set_title : "Security Code",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(card_data) = &model.active_entries_data.active_card_data {
+                                        &card_data.security_code
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
 
                             add = &adw::EntryRow {
                                 set_title : "Expiration Date",
                                 set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(card_data) = &model.active_entries_data.active_card_data {
+                                        &card_data.expiration_date
+                                    }
+                                    else {
+                                        ""
+                                    },
                             },
                         },
                     }
@@ -236,13 +351,16 @@ impl SimpleComponent for MainWindow {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+        // Populate the list view
         let mut list_view_wrapper = make_list_view_wrapper_from_data_vault(state.clone());
 
+        // Set up view filters
         list_view_wrapper.add_filter(|item| item.entry_type == EntryType::Password);
         list_view_wrapper.add_filter(|item| item.entry_type == EntryType::Note);
         list_view_wrapper.add_filter(|item| item.entry_type == EntryType::Card);
         list_view_wrapper.add_filter(|item| item.entry_type == EntryType::TOTP);
 
+        // Set up view filter status - Password is default
         list_view_wrapper.set_filter_status(0, true);
         list_view_wrapper.set_filter_status(1, false);
         list_view_wrapper.set_filter_status(2, false);
@@ -261,6 +379,8 @@ impl SimpleComponent for MainWindow {
 
             entry_view: EntryTypeView::Password,
             list_view_wrapper,
+
+            active_entries_data: make_active_entries_data(state.clone()),
 
             add_entry_prompt,
         };
@@ -290,6 +410,21 @@ impl SimpleComponent for MainWindow {
             MainWindowMsg::NewEntryListItem(new_entry_list_item) => {
                 self.list_view_wrapper.append(new_entry_list_item);
             }
+
+            MainWindowMsg::SetActiveIndex(index) => match self.entry_view {
+                EntryTypeView::Password => {
+                    self.active_entries_data.set_active_index(0, index);
+                }
+                EntryTypeView::Note => {
+                    self.active_entries_data.set_active_index(1, index);
+                }
+                EntryTypeView::Card => {
+                    self.active_entries_data.set_active_index(2, index);
+                }
+                EntryTypeView::TOTP => {
+                    self.active_entries_data.set_active_index(3, index);
+                }
+            },
 
             MainWindowMsg::ShowAddEntryPrompt => {
                 self.add_entry_prompt.emit(AddEntryPromptMsg::Show);
