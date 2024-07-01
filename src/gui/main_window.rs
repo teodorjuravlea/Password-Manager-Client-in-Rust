@@ -115,15 +115,14 @@ impl SimpleComponent for MainWindow {
                     },
                 },
 
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_height_request: 300,
+                adw::OverlaySplitView {
+                    set_sidebar_width_fraction: 0.40,
 
-                    gtk::Box {
+                    #[wrap(Some)]
+                    set_sidebar = &gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
-                        set_spacing: 20,
-                        set_margin_all: 20,
-                        set_width_request: 200,
+                        set_spacing: 1,
+                        set_margin_all: 1,
 
                         gtk::ScrolledWindow {
                             set_vexpand: true,
@@ -143,7 +142,8 @@ impl SimpleComponent for MainWindow {
                         }
                     },
 
-                    gtk::Box {
+                    #[wrap(Some)]
+                    set_content = &gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 20,
                         set_margin_all: 20,
