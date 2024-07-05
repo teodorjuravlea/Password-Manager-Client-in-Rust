@@ -19,8 +19,6 @@ pub enum EntryTypeView {
 }
 
 pub struct MainWindow {
-    is_logged_in: bool,
-
     entry_view: EntryTypeView,
     list_view_wrapper: TypedListView<EntryListItem, gtk::SingleSelection>,
 
@@ -186,7 +184,7 @@ impl SimpleComponent for MainWindow {
                                     },
                             },
 
-                            add = &adw::EntryRow {
+                            add = &adw::PasswordEntryRow {
                                 set_title : "Password",
                                 set_editable : false,
 
@@ -298,7 +296,7 @@ impl SimpleComponent for MainWindow {
                                     },
                             },
 
-                            add = &adw::EntryRow {
+                            add = &adw::PasswordEntryRow {
                                 set_title : "Card Number",
                                 set_editable : false,
 
@@ -312,7 +310,7 @@ impl SimpleComponent for MainWindow {
                                     },
                             },
 
-                            add = &adw::EntryRow {
+                            add = &adw::PasswordEntryRow {
                                 set_title : "Security Code",
                                 set_editable : false,
 
@@ -334,6 +332,41 @@ impl SimpleComponent for MainWindow {
                                 set_text:
                                     if let Some(card_data) = &model.active_entries_data.active_card_data {
                                         &card_data.expiration_date
+                                    }
+                                    else {
+                                        ""
+                                    },
+                            },
+                        },
+
+                        // TOTP View
+                        adw::PreferencesGroup {
+                            set_title: "TOTP",
+                            #[watch]
+                            set_visible: matches!(&model.entry_view, EntryTypeView::TOTP),
+
+                            add = &adw::EntryRow {
+                                set_title : "Name",
+                                set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(totp_data) = &model.active_entries_data.active_totp_data {
+                                        &totp_data.name
+                                    }
+                                    else {
+                                        ""
+                                    },
+                            },
+
+                            add = &adw::EntryRow {
+                                set_title : "Token",
+                                set_editable : false,
+
+                                #[watch]
+                                set_text:
+                                    if let Some(token) = &model.active_entries_data.current_totp_token {
+                                        token
                                     }
                                     else {
                                         ""
@@ -375,8 +408,6 @@ impl SimpleComponent for MainWindow {
             });
 
         let model = MainWindow {
-            is_logged_in: false,
-
             entry_view: EntryTypeView::Password,
             list_view_wrapper,
 
@@ -405,6 +436,12 @@ impl SimpleComponent for MainWindow {
                     .set_filter_status(2, self.entry_view == EntryTypeView::Card);
                 self.list_view_wrapper
                     .set_filter_status(3, self.entry_view == EntryTypeView::TOTP);
+
+                if self.entry_view == EntryTypeView::TOTP
+                    && self.active_entries_data.active_totp_data.is_some()
+                {
+                    self.active_entries_data.update_current_totp_token();
+                }
             }
 
             MainWindowMsg::NewEntryListItem(new_entry_list_item) => {

@@ -3,6 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use relm4::{prelude::*, typed_view::list::TypedListView};
 
 use crate::model::{Card, EntriesVault, Note, Password, TOTPEntry};
+use crate::totp::generate_totp_token;
 use crate::AppState;
 
 use super::entry_list_item::{EntryListItem, EntryType};
@@ -49,7 +50,9 @@ pub struct ActiveEntriesData {
     pub active_password_data: Option<Password>,
     pub active_note_data: Option<Note>,
     pub active_card_data: Option<Card>,
-    pub active_totp_entry_data: Option<TOTPEntry>,
+    pub active_totp_data: Option<TOTPEntry>,
+
+    pub current_totp_token: Option<String>,
 }
 
 impl ActiveEntriesData {
@@ -66,11 +69,18 @@ impl ActiveEntriesData {
                 self.active_card_data = Some(self.entries_vault.cards[index as usize].clone());
             }
             3 => {
-                self.active_totp_entry_data =
+                self.active_totp_data =
                     Some(self.entries_vault.totp_entries[index as usize].clone());
+
+                self.update_current_totp_token();
             }
             _ => panic!("Invalid view index"),
         }
+    }
+
+    pub fn update_current_totp_token(&mut self) {
+        self.current_totp_token =
+            Some(generate_totp_token(self.active_totp_data.clone().unwrap()).unwrap());
     }
 }
 
@@ -82,7 +92,9 @@ pub fn make_active_entries_data(state: Rc<RefCell<AppState>>) -> ActiveEntriesDa
             active_password_data: None,
             active_note_data: None,
             active_card_data: None,
-            active_totp_entry_data: None,
+            active_totp_data: None,
+
+            current_totp_token: None,
         },
         None => {
             panic!("Failed to get reference to data vault");
