@@ -260,30 +260,33 @@ pub fn encrypt_entry_vault(
 ) -> Vec<EncryptedDataEntry> {
     let encrypted_entries = Mutex::new(Vec::new());
 
-    for password in &entry_vault.passwords {
+    entry_vault.passwords.par_iter().for_each(|password| {
         match encrypt_password_entry(password, &ciphers.password_cipher) {
             Ok(encrypted_entry) => encrypted_entries.lock().unwrap().push(encrypted_entry),
             Err(e) => println!("{}", e),
         }
-    }
-    for note in &entry_vault.notes {
+    });
+
+    entry_vault.notes.par_iter().for_each(|note| {
         match encrypt_note_entry(note, &ciphers.note_cipher) {
             Ok(encrypted_entry) => encrypted_entries.lock().unwrap().push(encrypted_entry),
             Err(e) => println!("{}", e),
         }
-    }
-    for card in &entry_vault.cards {
+    });
+
+    entry_vault.cards.par_iter().for_each(|card| {
         match encrypt_card_entry(card, &ciphers.card_cipher) {
             Ok(encrypted_entry) => encrypted_entries.lock().unwrap().push(encrypted_entry),
             Err(e) => println!("{}", e),
         }
-    }
-    for totp_entry in &entry_vault.totp_entries {
+    });
+
+    entry_vault.totp_entries.par_iter().for_each(|totp_entry| {
         match encrypt_totp_entry(totp_entry, &ciphers.totp_entry_cipher) {
             Ok(encrypted_entry) => encrypted_entries.lock().unwrap().push(encrypted_entry),
             Err(e) => println!("{}", e),
         }
-    }
+    });
 
     encrypted_entries.into_inner().unwrap()
 }

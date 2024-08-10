@@ -1,4 +1,3 @@
-// Authentication
 pub fn is_password_valid(password: &str) -> bool {
     password.len() >= 8 && password.len() <= 64
 }
