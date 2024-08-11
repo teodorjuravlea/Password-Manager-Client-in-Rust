@@ -4,11 +4,13 @@ use crate::AppState;
 use adw::prelude::*;
 use relm4::{prelude::*, typed_view::list::TypedListView};
 use relm4_icons::icon_names;
+use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use super::actions::delete_entry_action;
 use super::add_entry_prompt::{AddEntryPrompt, AddEntryPromptMsg, AddEntryPromptOutput};
-use super::utils::{make_active_entries_data, ActiveEntriesData};
+use super::utils::{get_list_view_item_index, make_active_entries_data, ActiveEntriesData};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum EntryTypeView {
@@ -25,6 +27,8 @@ pub struct MainWindow {
     active_entries_data: ActiveEntriesData,
 
     add_entry_prompt: Controller<AddEntryPrompt>,
+
+    app_state: Rc<RefCell<AppState>>,
 }
 
 #[derive(Debug)]
@@ -36,6 +40,8 @@ pub enum MainWindowMsg {
     SetActiveIndex(u32),
 
     ShowAddEntryPrompt,
+
+    DeleteEntry,
 }
 
 #[relm4::component(pub)]
@@ -109,7 +115,18 @@ impl SimpleComponent for MainWindow {
                             connect_clicked[sender] => move |_| {
                                 sender.input(MainWindowMsg::ShowAddEntryPrompt);
                             }
-                        }
+                        },
+
+                        // Delete Entry Button
+                        gtk::Button {
+                            set_has_frame: true,
+                            set_icon_name: icon_names::USER_TRASH,
+                            add_css_class: "destructive-action",
+
+                            connect_clicked[sender] => move |_| {
+                                sender.input(MainWindowMsg::DeleteEntry);
+                            }
+                        },
                     },
                 },
 
@@ -414,6 +431,8 @@ impl SimpleComponent for MainWindow {
             active_entries_data: make_active_entries_data(state.clone()),
 
             add_entry_prompt,
+
+            app_state: state,
         };
 
         let list_view = &model.list_view_wrapper.view;
@@ -446,6 +465,9 @@ impl SimpleComponent for MainWindow {
 
             MainWindowMsg::NewEntryListItem(new_entry_list_item) => {
                 self.list_view_wrapper.append(new_entry_list_item);
+
+                self.active_entries_data
+                    .update_vault_data(self.app_state.clone());
             }
 
             MainWindowMsg::SetActiveIndex(index) => match self.entry_view {
@@ -465,6 +487,80 @@ impl SimpleComponent for MainWindow {
 
             MainWindowMsg::ShowAddEntryPrompt => {
                 self.add_entry_prompt.emit(AddEntryPromptMsg::Show);
+            }
+
+            MainWindowMsg::DeleteEntry => {
+                let name;
+                let content_type;
+
+                match self.entry_view {
+                    EntryTypeView::Password => {
+                        name = self
+                            .active_entries_data
+                            .active_password_data
+                            .as_ref()
+                            .unwrap()
+                            .name
+                            .clone();
+                        content_type = "password".to_string();
+                    }
+                    EntryTypeView::Note => {
+                        name = self
+                            .active_entries_data
+                            .active_note_data
+                            .as_ref()
+                            .unwrap()
+                            .name
+                            .clone();
+                        content_type = "note".to_string();
+                    }
+                    EntryTypeView::Card => {
+                        name = self
+                            .active_entries_data
+                            .active_card_data
+                            .as_ref()
+                            .unwrap()
+                            .name
+                            .clone();
+                        content_type = "card".to_string();
+                    }
+                    EntryTypeView::TOTP => {
+                        name = self
+                            .active_entries_data
+                            .active_totp_data
+                            .as_ref()
+                            .unwrap()
+                            .name
+                            .clone();
+                        content_type = "totp".to_string();
+                    }
+                }
+
+                match delete_entry_action(
+                    name.as_str(),
+                    content_type.as_str(),
+                    self.app_state.clone(),
+                ) {
+                    Ok(_) => {
+                        self.active_entries_data = make_active_entries_data(self.app_state.clone());
+
+                        match get_list_view_item_index(
+                            name.as_str(),
+                            content_type.as_str(),
+                            self.list_view_wrapper.borrow_mut(),
+                        ) {
+                            Ok(index) => {
+                                self.list_view_wrapper.remove(index);
+                            }
+                            Err(e) => {
+                                panic!("{}", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        panic!("Failed to delete entry: {}", e);
+                    }
+                }
             }
         }
     }

@@ -1,6 +1,5 @@
 use adw::prelude::*;
-use relm4::{component::Connector, prelude::*, typed_view::list::RelmListItem, Sender};
-use std::rc::Rc;
+use relm4::{prelude::*, typed_view::list::RelmListItem};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EntryType {

@@ -2,7 +2,7 @@ use super::actions::{login_action, register_action};
 use super::auth_response_dialog::AuthResponseDialog;
 use crate::AppState;
 use adw::prelude::*;
-use relm4::{component::Connector, prelude::*, Sender};
+use relm4::{component::Connector, prelude::*};
 use std::cell::RefCell;
 use std::rc::Rc;
 

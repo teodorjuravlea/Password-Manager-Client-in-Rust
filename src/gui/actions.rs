@@ -1,14 +1,17 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use relm4::ComponentController;
 
 use super::add_entry_prompt::AddEntryPrompt;
 use super::auth_prompt::AuthPrompt;
 use super::auth_response_dialog::AuthResponseDialogMsg;
 use super::entry_list_item::EntryListItem;
-use crate::entries::*;
 use crate::gui::add_entry_response_dialog::AddEntryResponseDialogMsg;
 use crate::gui::entry_list_item::EntryType;
 use crate::model::DataVault;
 use crate::requests::*;
+use crate::{entries::*, AppState};
 
 pub fn login_action(email: &str, password: &str, auth_prompt: &mut AuthPrompt) {
     let mut app_state = auth_prompt.app_state.borrow_mut();
@@ -236,4 +239,59 @@ pub fn add_card_action(
     }
 
     panic!("Failed to get reference to app state");
+}
+
+pub fn delete_entry_action(
+    name: &str,
+    content_type: &str,
+    app_state: Rc<RefCell<AppState>>,
+) -> Result<(), String> {
+    let mut app_state = app_state.borrow_mut();
+
+    match delete_encrypted_data_entry_request(
+        name,
+        content_type,
+        &app_state.client,
+        &app_state.base_url,
+    ) {
+        Ok(response) => {
+            println!("Delete entry successful: {}", response.status);
+
+            let data_vault = match app_state.vault.as_mut() {
+                Some(vault) => vault,
+                None => {
+                    panic!("Failed to get reference to data vault");
+                }
+            };
+
+            let entries_vault = &mut data_vault.entries_vault;
+
+            match content_type {
+                "password" => {
+                    entries_vault.passwords.retain(|entry| entry.name != name);
+                }
+                "note" => {
+                    entries_vault.notes.retain(|entry| entry.name != name);
+                }
+                "card" => {
+                    entries_vault.cards.retain(|entry| entry.name != name);
+                }
+                "totp" => {
+                    entries_vault
+                        .totp_entries
+                        .retain(|entry| entry.name != name);
+                }
+                _ => {
+                    panic!("Invalid content type");
+                }
+            }
+
+            Ok(())
+        }
+        Err(e) => {
+            println!("Delete entry failed: {}", e);
+
+            Err(e.to_string())
+        }
+    }
 }

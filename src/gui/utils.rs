@@ -44,6 +44,36 @@ pub fn make_list_view_wrapper_from_data_vault(
     }
 }
 
+pub fn get_list_view_item_index(
+    name: &str,
+    content_type: &str,
+    list_view_wrapper: &TypedListView<EntryListItem, gtk::SingleSelection>,
+) -> Result<u32, String> {
+    let entry_type = match content_type {
+        "password" => EntryType::Password,
+        "note" => EntryType::Note,
+        "card" => EntryType::Card,
+        "totp" => EntryType::TOTP,
+        _ => panic!("Invalid entry type"),
+    };
+
+    let mut i = 0;
+
+    while i < list_view_wrapper.len() {
+        if let Some(list_item) = list_view_wrapper.get(i) {
+            let list_item = list_item.borrow();
+
+            if list_item.name == name && list_item.entry_type == entry_type {
+                return Ok(i);
+            }
+        }
+
+        i += 1;
+    }
+
+    Err("Failed to get list view item index".to_string())
+}
+
 pub struct ActiveEntriesData {
     pub entries_vault: EntriesVault,
 
@@ -56,6 +86,17 @@ pub struct ActiveEntriesData {
 }
 
 impl ActiveEntriesData {
+    pub fn update_vault_data(&mut self, state: Rc<RefCell<AppState>>) {
+        match state.borrow().vault.as_ref() {
+            Some(data_vault) => {
+                self.entries_vault = data_vault.entries_vault.clone();
+            }
+            None => {
+                panic!("Failed to get reference to data vault");
+            }
+        }
+    }
+
     pub fn set_active_index(&mut self, view: u8, index: u32) {
         match view {
             0 => {
