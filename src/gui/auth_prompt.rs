@@ -13,6 +13,8 @@ pub enum AuthAppMode {
 }
 
 pub struct AuthPrompt {
+    visible: bool,
+
     mode: AuthAppMode,
 
     login_email: gtk::EntryBuffer,
@@ -35,14 +37,22 @@ pub enum AuthMsg {
     RegisterPress,
 }
 
+#[derive(Debug)]
+pub enum LoggedInMsg {
+    LoggedIn,
+}
+
 #[relm4::component(pub)]
 impl SimpleComponent for AuthPrompt {
     type Init = Rc<RefCell<AppState>>;
     type Input = AuthMsg;
-    type Output = AuthMsg;
+    type Output = LoggedInMsg;
 
     view! {
         adw::ApplicationWindow {
+            #[watch]
+            set_visible: model.visible,
+
             set_margin_all: 20,
             set_modal: true,
             set_title: Some("Authentication"),
@@ -165,6 +175,8 @@ impl SimpleComponent for AuthPrompt {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = AuthPrompt {
+            visible: true,
+
             app_state: state,
 
             mode: AuthAppMode::Login,
@@ -186,7 +198,7 @@ impl SimpleComponent for AuthPrompt {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             AuthMsg::SetMode(mode) => {
                 self.mode = mode;
@@ -195,7 +207,11 @@ impl SimpleComponent for AuthPrompt {
                 let email = self.login_email.text();
                 let password = self.login_password.text();
 
-                login_action(&email, &password, self);
+                if login_action(&email, &password, self).is_ok() {
+                    sender.output(LoggedInMsg::LoggedIn).unwrap();
+                }
+
+                self.visible = false;
             }
 
             AuthMsg::RegisterPress => {

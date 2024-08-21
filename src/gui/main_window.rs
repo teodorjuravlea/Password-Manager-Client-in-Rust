@@ -52,6 +52,7 @@ impl SimpleComponent for MainWindow {
 
     view! {
         adw::ApplicationWindow {
+            set_visible: true,
             set_margin_all: 20,
             set_modal: true,
             set_title: Some("Password Manager"),
