@@ -1,5 +1,5 @@
 use crate::gui::entry_list_item::{EntryListItem, EntryType};
-use crate::gui::utils::make_list_view_wrapper_from_data_vault;
+use crate::gui::utils::{generate_random_password, make_list_view_wrapper_from_data_vault};
 use crate::AppState;
 use adw::prelude::*;
 use relm4::{prelude::*, typed_view::list::TypedListView};
@@ -42,6 +42,8 @@ pub enum MainWindowMsg {
     ShowAddEntryPrompt,
 
     DeleteEntry,
+
+    GenerateRandomPassword,
 }
 
 #[relm4::component(pub)]
@@ -112,6 +114,8 @@ impl SimpleComponent for MainWindow {
                         gtk::Button {
                             set_has_frame: true,
                             set_icon_name: icon_names::PLUS_LARGE,
+                            add_css_class: "suggested-action",
+                            set_tooltip_text: Some("Add new entry"),
 
                             connect_clicked[sender] => move |_| {
                                 sender.input(MainWindowMsg::ShowAddEntryPrompt);
@@ -123,12 +127,24 @@ impl SimpleComponent for MainWindow {
                             set_has_frame: true,
                             set_icon_name: icon_names::USER_TRASH,
                             add_css_class: "destructive-action",
+                            set_tooltip_text: Some("Delete selected entry"),
 
                             connect_clicked[sender] => move |_| {
                                 sender.input(MainWindowMsg::DeleteEntry);
                             }
                         },
-                    },
+
+                        // Generate Password Button
+                        gtk::Button {
+                            set_has_frame: true,
+                            set_icon_name: icon_names::UPDATE,
+                            set_tooltip_text: Some("Generate random password (to clipboard)"),
+
+                            connect_clicked[sender] => move |_| {
+                                sender.input(MainWindowMsg::GenerateRandomPassword);
+                            }
+                        },
+                    }
                 },
 
                 adw::OverlaySplitView {
@@ -562,6 +578,16 @@ impl SimpleComponent for MainWindow {
                         panic!("Failed to delete entry: {}", e);
                     }
                 }
+            }
+
+            MainWindowMsg::GenerateRandomPassword => {
+                let gen_pass = generate_random_password();
+
+                // lol
+                let button = gtk::Button::builder().build();
+                let clipboard = button.clipboard();
+
+                clipboard.set_text(&gen_pass);
             }
         }
     }

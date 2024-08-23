@@ -1,5 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
+use adw::glib::random_set_seed;
 use relm4::{prelude::*, typed_view::list::TypedListView};
 
 use crate::model::{Card, EntriesVault, Note, Password, TOTPEntry};
@@ -141,4 +142,10 @@ pub fn make_active_entries_data(state: Rc<RefCell<AppState>>) -> ActiveEntriesDa
             panic!("Failed to get reference to data vault");
         }
     }
+}
+
+pub fn generate_random_password() -> String {
+    let charset = random_string::charsets::ALPHANUMERIC.to_string() + "!@#$%^&*()_+-=";
+
+    random_string::generate_rng(12..16, charset)
 }
