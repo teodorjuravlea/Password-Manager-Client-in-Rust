@@ -2,12 +2,14 @@ use std::{cell::RefCell, rc::Rc};
 
 use super::{
     actions::*, add_entry_response_dialog::AddEntryResponseDialog, entry_list_item::EntryListItem,
+    utils::generate_random_password,
 };
 use crate::AppState;
 
 use super::main_window::EntryTypeView;
 use adw::prelude::*;
 use relm4::{component::Connector, prelude::*};
+use relm4_icons::icon_names;
 
 pub struct AddPassword {
     name: gtk::EntryBuffer,
@@ -19,7 +21,7 @@ pub struct AddPassword {
 
 pub struct AddNote {
     name: gtk::EntryBuffer,
-    content: gtk::EntryBuffer,
+    content: gtk::TextBuffer,
 }
 
 pub struct AddCard {
@@ -51,6 +53,8 @@ pub enum AddEntryPromptMsg {
     AddPress,
 
     Show,
+
+    GenerateRandomPassword,
 }
 
 #[derive(Debug)]
@@ -83,40 +87,53 @@ impl SimpleComponent for AddEntryPrompt {
 
                     #[wrap(Some)]
                     set_title_widget = &gtk::Box {
-                        add_css_class: "linked",
-                        append: group = &gtk::ToggleButton {
-                            set_label: "Passwords",
-                            set_has_frame: true,
-                            set_active: true,
-                            connect_clicked[sender] => move |_| {
-                                sender.input(AddEntryPromptMsg::SetMode(EntryTypeView::Password));
+                        gtk::Box {
+                            add_css_class: "linked",
+                            append: group = &gtk::ToggleButton {
+                                set_label: "Passwords",
+                                set_has_frame: true,
+                                set_active: true,
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(AddEntryPromptMsg::SetMode(EntryTypeView::Password));
 
+                                },
+                            },
+                            gtk::ToggleButton {
+                                set_label: "Notes",
+                                set_has_frame: true,
+                                set_group: Some(&group),
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(AddEntryPromptMsg::SetMode(EntryTypeView::Note));
+                                }
+                            },
+
+                            gtk::ToggleButton {
+                                set_label: "Cards",
+                                set_has_frame: true,
+                                set_group: Some(&group),
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(AddEntryPromptMsg::SetMode(EntryTypeView::Card));
+                                }
+                            },
+
+                            gtk::ToggleButton {
+                                set_label: "OTP",
+                                set_has_frame: true,
+                                set_group: Some(&group),
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(AddEntryPromptMsg::SetMode(EntryTypeView::TOTP));
+                                }
                             },
                         },
-                        gtk::ToggleButton {
-                            set_label: "Notes",
-                            set_has_frame: true,
-                            set_group: Some(&group),
-                            connect_clicked[sender] => move |_| {
-                                sender.input(AddEntryPromptMsg::SetMode(EntryTypeView::Note));
-                            }
-                        },
 
-                        gtk::ToggleButton {
-                            set_label: "Cards",
+                        // Generate Password Button
+                        gtk::Button {
                             set_has_frame: true,
-                            set_group: Some(&group),
-                            connect_clicked[sender] => move |_| {
-                                sender.input(AddEntryPromptMsg::SetMode(EntryTypeView::Card));
-                            }
-                        },
+                            set_icon_name: icon_names::UPDATE,
+                            set_tooltip_text: Some("Generate random password (to clipboard)"),
 
-                        gtk::ToggleButton {
-                            set_label: "OTP",
-                            set_has_frame: true,
-                            set_group: Some(&group),
                             connect_clicked[sender] => move |_| {
-                                sender.input(AddEntryPromptMsg::SetMode(EntryTypeView::TOTP));
+                                sender.input(AddEntryPromptMsg::GenerateRandomPassword);
                             }
                         },
                     },
@@ -126,6 +143,7 @@ impl SimpleComponent for AddEntryPrompt {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     set_spacing: 10,
+                    set_margin_all: 10,
 
                     #[watch]
                     set_visible: matches!(model.entry_type_view, EntryTypeView::Password),
@@ -172,6 +190,7 @@ impl SimpleComponent for AddEntryPrompt {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     set_spacing: 10,
+                    set_margin_all: 10,
 
                     #[watch]
                     set_visible: matches!(model.entry_type_view, EntryTypeView::Note),
@@ -186,8 +205,14 @@ impl SimpleComponent for AddEntryPrompt {
                     gtk::Label {
                         set_label: "Content",
                     },
-                    gtk::Entry {
-                        set_buffer: &model.add_note.content,
+                    gtk::TextView {
+                        set_buffer: Some(&model.add_note.content),
+                        set_height_request: 100,
+                        inline_css: "border: 1px; border-radius: 6px; background-color: #3a3a3a;",
+                        set_top_margin: 10,
+                        set_bottom_margin: 10,
+                        set_left_margin: 10,
+                        set_right_margin: 10,
                     },
                 },
 
@@ -195,6 +220,7 @@ impl SimpleComponent for AddEntryPrompt {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     set_spacing: 10,
+                    set_margin_all: 10,
 
                     #[watch]
                     set_visible: matches!(model.entry_type_view, EntryTypeView::Card),
@@ -265,7 +291,7 @@ impl SimpleComponent for AddEntryPrompt {
             },
             add_note: AddNote {
                 name: gtk::EntryBuffer::default(),
-                content: gtk::EntryBuffer::default(),
+                content: gtk::TextBuffer::default(),
             },
             add_card: AddCard {
                 name: gtk::EntryBuffer::default(),
@@ -317,7 +343,11 @@ impl SimpleComponent for AddEntryPrompt {
 
                 EntryTypeView::Note => {
                     let name = self.add_note.name.text();
-                    let content = self.add_note.content.text();
+                    let content = self.add_note.content.text(
+                        &self.add_note.content.start_iter(),
+                        &self.add_note.content.end_iter(),
+                        false,
+                    );
 
                     if let Ok(new_entry_list_item) = add_note_action(&name, &content, self) {
                         sender
@@ -352,6 +382,16 @@ impl SimpleComponent for AddEntryPrompt {
 
             AddEntryPromptMsg::Show => {
                 self.is_active = true;
+            }
+
+            AddEntryPromptMsg::GenerateRandomPassword => {
+                let gen_pass = generate_random_password();
+
+                // lol
+                let button = gtk::Button::builder().build();
+                let clipboard = button.clipboard();
+
+                clipboard.set_text(&gen_pass);
             }
         }
     }

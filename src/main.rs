@@ -1,7 +1,5 @@
-use entries::fill_data_vault_from_response;
 use model::DataVault;
 use relm4_icons::initialize_icons;
-use requests::get_all_encrypted_data_entries_request;
 use reqwest::blocking::Client;
 use std::{cell::RefCell, rc::Rc};
 
@@ -11,7 +9,6 @@ pub mod entries;
 pub mod gui;
 pub mod model;
 pub mod requests;
-pub mod tests;
 pub mod totp;
 
 pub struct AppState {

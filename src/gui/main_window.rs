@@ -592,8 +592,3 @@ impl SimpleComponent for MainWindow {
         }
     }
 }
-
-pub fn run_main_window(app_state: Rc<RefCell<AppState>>) {
-    let app = RelmApp::new("rust-password-manager-client");
-    app.run::<MainWindow>(app_state);
-}
