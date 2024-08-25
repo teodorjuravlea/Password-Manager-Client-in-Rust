@@ -209,9 +209,8 @@ impl SimpleComponent for AuthPrompt {
 
                 if login_action(&email, &password, self).is_ok() {
                     sender.output(LoggedInMsg::LoggedIn).unwrap();
+                    self.visible = false;
                 }
-
-                self.visible = false;
             }
 
             AuthMsg::RegisterPress => {
