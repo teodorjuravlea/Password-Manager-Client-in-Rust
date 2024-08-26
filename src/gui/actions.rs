@@ -13,7 +13,11 @@ use crate::model::DataVault;
 use crate::requests::*;
 use crate::{entries::*, AppState};
 
-pub fn login_action(email: &str, password: &str, auth_prompt: &mut AuthPrompt) -> Result<(), ()> {
+pub fn login_action(
+    email: &str,
+    password: &str,
+    auth_prompt: &mut AuthPrompt,
+) -> Result<(), String> {
     let mut app_state = auth_prompt.app_state.borrow_mut();
 
     match login_request(email, password, &app_state.client, &app_state.base_url) {
@@ -34,13 +38,11 @@ pub fn login_action(email: &str, password: &str, auth_prompt: &mut AuthPrompt) -
             Ok(())
         }
         Err(e) => {
-            println!("Login failed: {}", e);
-
             auth_prompt
                 .response_dialog
                 .emit(AuthResponseDialogMsg::LoginFail(e.to_string()));
 
-            Err(())
+            Err(format!("Login failed: {}", e))
         }
     }
 }
