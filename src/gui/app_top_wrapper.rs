@@ -13,7 +13,7 @@ use super::{
     main_window::{LoggedOutMsg, MainWindow},
 };
 
-struct AppTopWrapper {
+pub struct AppTopWrapper {
     auth_prompt: Option<Controller<AuthPrompt>>,
     main_window: Option<Controller<MainWindow>>,
 
@@ -21,7 +21,7 @@ struct AppTopWrapper {
 }
 
 #[derive(Debug)]
-enum AppTopWrapperInput {
+pub enum AppTopWrapperInput {
     LoggedIn,
     LoggedOut,
 }
@@ -108,9 +108,4 @@ impl SimpleComponent for AppTopWrapper {
             }
         }
     }
-}
-
-pub fn run_app(app_state: Rc<RefCell<AppState>>) {
-    let app = RelmApp::new("rust-password-manager-client");
-    app.run::<AppTopWrapper>(app_state);
 }

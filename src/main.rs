@@ -1,4 +1,6 @@
+use gui::app_top_wrapper::AppTopWrapper;
 use model::DataVault;
+use relm4::RelmApp;
 use relm4_icons::initialize_icons;
 use reqwest::blocking::Client;
 use std::{cell::RefCell, rc::Rc};
@@ -40,5 +42,6 @@ fn main() {
 
     initialize_icons();
 
-    gui::app_top_wrapper::run_app(state.clone());
+    let app = RelmApp::new("password-manager-client");
+    app.run::<AppTopWrapper>(state);
 }
