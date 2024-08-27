@@ -14,7 +14,7 @@ use super::{
 };
 
 struct AppTopWrapper {
-    auth_prompt: Controller<AuthPrompt>,
+    auth_prompt: Option<Controller<AuthPrompt>>,
     main_window: Option<Connector<MainWindow>>,
 
     app_state: Rc<RefCell<AppState>>,
@@ -42,12 +42,14 @@ impl SimpleComponent for AppTopWrapper {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = AppTopWrapper {
-            auth_prompt: AuthPrompt::builder()
-                .transient_for(&root)
-                .launch(init.clone())
-                .forward(sender.input_sender(), |msg| match msg {
-                    LoggedInMsg::LoggedIn => AppTopWrapperInput::LoggedIn,
-                }),
+            auth_prompt: Some(
+                AuthPrompt::builder()
+                    .transient_for(&root)
+                    .launch(init.clone())
+                    .forward(sender.input_sender(), |msg| match msg {
+                        LoggedInMsg::LoggedIn => AppTopWrapperInput::LoggedIn,
+                    }),
+            ),
             main_window: None,
 
             app_state: init,
@@ -82,6 +84,7 @@ impl SimpleComponent for AppTopWrapper {
                     }
                 };
 
+                self.auth_prompt = None;
                 self.main_window = Some(MainWindow::builder().launch(self.app_state.clone()));
             }
         }

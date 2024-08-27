@@ -13,8 +13,6 @@ pub enum AuthAppMode {
 }
 
 pub struct AuthPrompt {
-    visible: bool,
-
     mode: AuthAppMode,
 
     login_email: gtk::EntryBuffer,
@@ -50,9 +48,6 @@ impl SimpleComponent for AuthPrompt {
 
     view! {
         adw::ApplicationWindow {
-            #[watch]
-            set_visible: model.visible,
-
             set_margin_all: 20,
             set_modal: true,
             set_title: Some("Authentication"),
@@ -175,8 +170,6 @@ impl SimpleComponent for AuthPrompt {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = AuthPrompt {
-            visible: true,
-
             app_state: state,
 
             mode: AuthAppMode::Login,
@@ -209,7 +202,6 @@ impl SimpleComponent for AuthPrompt {
 
                 if login_action(&email, &password, self).is_ok() {
                     sender.output(LoggedInMsg::LoggedIn).unwrap();
-                    self.visible = false;
                 }
             }
 
