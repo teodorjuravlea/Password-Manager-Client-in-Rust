@@ -94,6 +94,10 @@ impl SimpleComponent for AppTopWrapper {
             }
 
             AppTopWrapperInput::LoggedOut => {
+                self.main_window = None;
+
+                self.app_state.borrow_mut().vault = None;
+
                 self.auth_prompt = Some(
                     AuthPrompt::builder()
                         .launch(self.app_state.clone())
@@ -101,9 +105,6 @@ impl SimpleComponent for AppTopWrapper {
                             LoggedInMsg::LoggedIn => AppTopWrapperInput::LoggedIn,
                         }),
                 );
-                self.main_window = None;
-
-                self.app_state.borrow_mut().vault = None;
             }
         }
     }
