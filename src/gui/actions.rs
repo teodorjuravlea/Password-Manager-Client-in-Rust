@@ -24,8 +24,6 @@ pub fn login_action(
         Ok(response) => {
             println!("Login successful: {}", response.status);
 
-            app_state.is_logged_in = true;
-
             let data_vault = match DataVault::new(email, password) {
                 Ok(data_vault) => data_vault,
                 Err(e) => {

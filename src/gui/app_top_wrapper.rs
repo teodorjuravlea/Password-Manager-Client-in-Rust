@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use adw::prelude::*;
-use relm4::{component::Connector, prelude::*, Controller, SimpleComponent};
+use relm4::{prelude::*, Controller, SimpleComponent};
 
 use crate::{
     entries::fill_data_vault_from_response, requests::get_all_encrypted_data_entries_request,
@@ -10,12 +10,12 @@ use crate::{
 
 use super::{
     auth_prompt::{AuthPrompt, LoggedInMsg},
-    main_window::MainWindow,
+    main_window::{LoggedOutMsg, MainWindow},
 };
 
 struct AppTopWrapper {
     auth_prompt: Option<Controller<AuthPrompt>>,
-    main_window: Option<Connector<MainWindow>>,
+    main_window: Option<Controller<MainWindow>>,
 
     app_state: Rc<RefCell<AppState>>,
 }
@@ -23,6 +23,7 @@ struct AppTopWrapper {
 #[derive(Debug)]
 enum AppTopWrapperInput {
     LoggedIn,
+    LoggedOut,
 }
 
 #[relm4::component(pub)]
@@ -42,14 +43,12 @@ impl SimpleComponent for AppTopWrapper {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = AppTopWrapper {
-            auth_prompt: Some(
-                AuthPrompt::builder()
-                    .transient_for(&root)
-                    .launch(init.clone())
-                    .forward(sender.input_sender(), |msg| match msg {
-                        LoggedInMsg::LoggedIn => AppTopWrapperInput::LoggedIn,
-                    }),
-            ),
+            auth_prompt: Some(AuthPrompt::builder().launch(init.clone()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    LoggedInMsg::LoggedIn => AppTopWrapperInput::LoggedIn,
+                },
+            )),
             main_window: None,
 
             app_state: init,
@@ -59,7 +58,7 @@ impl SimpleComponent for AppTopWrapper {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             AppTopWrapperInput::LoggedIn => {
                 let encrypted_entries_response = match get_all_encrypted_data_entries_request(
@@ -85,7 +84,26 @@ impl SimpleComponent for AppTopWrapper {
                 };
 
                 self.auth_prompt = None;
-                self.main_window = Some(MainWindow::builder().launch(self.app_state.clone()));
+                self.main_window = Some(
+                    MainWindow::builder()
+                        .launch(self.app_state.clone())
+                        .forward(sender.input_sender(), |msg| match msg {
+                            LoggedOutMsg::LoggedOut => AppTopWrapperInput::LoggedOut,
+                        }),
+                );
+            }
+
+            AppTopWrapperInput::LoggedOut => {
+                self.auth_prompt = Some(
+                    AuthPrompt::builder()
+                        .launch(self.app_state.clone())
+                        .forward(sender.input_sender(), |msg| match msg {
+                            LoggedInMsg::LoggedIn => AppTopWrapperInput::LoggedIn,
+                        }),
+                );
+                self.main_window = None;
+
+                self.app_state.borrow_mut().vault = None;
             }
         }
     }

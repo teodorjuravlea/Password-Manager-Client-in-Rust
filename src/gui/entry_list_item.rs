@@ -77,6 +77,6 @@ impl RelmListItem for EntryListItem {
         } = widgets;
 
         name.set_label(format!("<big><b>{}</b></big>", self.name).as_str());
-        subtext.set_label(format!("{}", self.subtext).as_str());
+        subtext.set_label(self.subtext.as_str());
     }
 }

@@ -1,6 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
 
-use adw::glib::random_set_seed;
 use relm4::{prelude::*, typed_view::list::TypedListView};
 
 use crate::model::{Card, EntriesVault, Note, Password, TOTPEntry};

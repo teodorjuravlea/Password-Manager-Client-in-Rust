@@ -16,7 +16,6 @@ pub struct AppState {
     base_url: String,
 
     vault: Option<DataVault>,
-    is_logged_in: bool,
 }
 
 fn main() {
@@ -37,7 +36,6 @@ fn main() {
         client: reqwest_client,
         base_url: "http://localhost:8080".to_string(),
         vault: None,
-        is_logged_in: false,
     }));
 
     initialize_icons();

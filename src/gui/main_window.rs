@@ -46,11 +46,16 @@ pub enum MainWindowMsg {
     GenerateRandomPassword,
 }
 
+#[derive(Debug)]
+pub enum LoggedOutMsg {
+    LoggedOut,
+}
+
 #[relm4::component(pub)]
 impl SimpleComponent for MainWindow {
     type Init = Rc<RefCell<AppState>>;
     type Input = MainWindowMsg;
-    type Output = ();
+    type Output = LoggedOutMsg;
 
     view! {
         adw::ApplicationWindow {
