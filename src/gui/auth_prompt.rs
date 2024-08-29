@@ -13,6 +13,8 @@ pub enum AuthAppMode {
 }
 
 pub struct AuthPrompt {
+    pub is_active: bool,
+
     mode: AuthAppMode,
 
     login_email: gtk::EntryBuffer,
@@ -54,6 +56,9 @@ impl SimpleComponent for AuthPrompt {
             set_resizable: false,
             set_default_size: (500, 300),
             set_css_classes: &["background", "csd"],
+
+            #[watch]
+            set_visible: model.is_active,
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -170,6 +175,8 @@ impl SimpleComponent for AuthPrompt {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = AuthPrompt {
+            is_active: true,
+
             app_state: state,
 
             mode: AuthAppMode::Login,
@@ -202,6 +209,7 @@ impl SimpleComponent for AuthPrompt {
 
                 if login_action(&email, &password, self).is_ok() {
                     sender.output(LoggedInMsg::LoggedIn).unwrap();
+                    self.is_active = false;
                 }
             }
 

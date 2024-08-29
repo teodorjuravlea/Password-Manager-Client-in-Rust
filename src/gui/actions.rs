@@ -77,6 +77,10 @@ pub fn register_action(
     }
 }
 
+pub fn logout_action(app_state: &Rc<RefCell<AppState>>) {
+    logout_request(&app_state.borrow().client, &app_state.borrow().base_url).unwrap_or_default();
+}
+
 pub fn add_password_action(
     name: &str,
     username: &str,

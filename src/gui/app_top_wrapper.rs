@@ -34,6 +34,7 @@ impl SimpleComponent for AppTopWrapper {
 
     view! {
         adw::ApplicationWindow {
+            set_visible: false,
         }
     }
 

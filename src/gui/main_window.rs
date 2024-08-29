@@ -3,12 +3,11 @@ use crate::gui::utils::{generate_random_password, make_list_view_wrapper_from_da
 use crate::AppState;
 use adw::prelude::*;
 use relm4::{prelude::*, typed_view::list::TypedListView};
-use relm4_icons::icon_names;
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use super::actions::delete_entry_action;
+use super::actions::{delete_entry_action, logout_action};
 use super::add_entry_prompt::{AddEntryPrompt, AddEntryPromptMsg, AddEntryPromptOutput};
 use super::utils::{get_list_view_item_index, make_active_entries_data, ActiveEntriesData};
 
@@ -21,6 +20,8 @@ pub enum EntryTypeView {
 }
 
 pub struct MainWindow {
+    is_active: bool,
+
     entry_view: EntryTypeView,
     list_view_wrapper: TypedListView<EntryListItem, gtk::SingleSelection>,
 
@@ -44,6 +45,8 @@ pub enum MainWindowMsg {
     DeleteEntry,
 
     GenerateRandomPassword,
+
+    LogoutPress,
 }
 
 #[derive(Debug)]
@@ -59,7 +62,9 @@ impl SimpleComponent for MainWindow {
 
     view! {
         adw::ApplicationWindow {
-            set_visible: true,
+            #[watch]
+            set_visible: model.is_active,
+
             set_margin_all: 20,
             set_modal: true,
             set_title: Some("Password Manager"),
@@ -73,12 +78,41 @@ impl SimpleComponent for MainWindow {
                 adw::HeaderBar {
                     set_show_end_title_buttons: true,
 
+                    pack_start = &gtk::Box {
+                        set_spacing: 10,
+
+                        // Add Entry Button
+                        gtk::Button {
+                            set_has_frame: true,
+                            set_icon_name: "plus-large",
+                            add_css_class: "suggested-action",
+                            set_tooltip_text: Some("Add new entry"),
+
+                            connect_clicked[sender] => move |_| {
+                                sender.input(MainWindowMsg::ShowAddEntryPrompt);
+                            }
+                        },
+
+                        // Delete Entry Button
+                        gtk::Button {
+                            set_has_frame: true,
+                            set_icon_name: "user-trash",
+                            add_css_class: "destructive-action",
+                            set_tooltip_text: Some("Delete selected entry"),
+
+                            connect_clicked[sender] => move |_| {
+                                sender.input(MainWindowMsg::DeleteEntry);
+                            }
+                        },
+                    },
+
                     #[wrap(Some)]
                     set_title_widget = &gtk::Box {
                         set_spacing: 20,
 
                         gtk::Box {
                             add_css_class: "linked",
+
                             append: group = &gtk::ToggleButton {
                                 set_label: "Passwords",
                                 set_has_frame: true,
@@ -116,40 +150,31 @@ impl SimpleComponent for MainWindow {
                             },
                         },
 
-                        gtk::Button {
-                            set_has_frame: true,
-                            set_icon_name: icon_names::PLUS_LARGE,
-                            add_css_class: "suggested-action",
-                            set_tooltip_text: Some("Add new entry"),
-
-                            connect_clicked[sender] => move |_| {
-                                sender.input(MainWindowMsg::ShowAddEntryPrompt);
-                            }
-                        },
-
-                        // Delete Entry Button
-                        gtk::Button {
-                            set_has_frame: true,
-                            set_icon_name: icon_names::USER_TRASH,
-                            add_css_class: "destructive-action",
-                            set_tooltip_text: Some("Delete selected entry"),
-
-                            connect_clicked[sender] => move |_| {
-                                sender.input(MainWindowMsg::DeleteEntry);
-                            }
-                        },
-
                         // Generate Password Button
                         gtk::Button {
                             set_has_frame: true,
-                            set_icon_name: icon_names::UPDATE,
+                            set_icon_name: "update",
                             set_tooltip_text: Some("Generate random password (to clipboard)"),
 
                             connect_clicked[sender] => move |_| {
                                 sender.input(MainWindowMsg::GenerateRandomPassword);
                             }
                         },
-                    }
+                    },
+
+                    pack_end = &gtk::Box {
+                        set_spacing: 10,
+
+                        gtk::Button {
+                            set_has_frame: true,
+                            set_icon_name: "log-out",
+                            set_tooltip_text: Some("Logout"),
+
+                            connect_clicked[sender] => move |_| {
+                                sender.input(MainWindowMsg::LogoutPress);
+                            }
+                        }
+                    },
                 },
 
                 adw::OverlaySplitView {
@@ -447,6 +472,8 @@ impl SimpleComponent for MainWindow {
             });
 
         let model = MainWindow {
+            is_active: true,
+
             entry_view: EntryTypeView::Password,
             list_view_wrapper,
 
@@ -464,7 +491,7 @@ impl SimpleComponent for MainWindow {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             MainWindowMsg::SetMode(mode) => {
                 self.entry_view = mode;
@@ -593,6 +620,12 @@ impl SimpleComponent for MainWindow {
                 let clipboard = button.clipboard();
 
                 clipboard.set_text(&gen_pass);
+            }
+
+            MainWindowMsg::LogoutPress => {
+                self.is_active = false;
+                logout_action(&self.app_state);
+                sender.output(LoggedOutMsg::LoggedOut).unwrap();
             }
         }
     }

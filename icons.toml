@@ -1,1 +1,3 @@
 icons = ["plus-large", "user-trash", "update"]
+
+icon_folder = "icons"
