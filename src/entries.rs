@@ -51,6 +51,25 @@ pub fn create_card_entry(
     }
 }
 
+pub fn create_totp_entry(
+    name: &str,
+    algorithm: &str,
+    secret: &str,
+    digits: usize,
+    skew: u8,
+    period: u64,
+) -> TOTPEntry {
+    TOTPEntry {
+        name: name.to_string(),
+        algorithm: algorithm.to_string(),
+        secret: secret.to_string(),
+        digits,
+        skew,
+        period,
+        created_at: "".to_string(),
+    }
+}
+
 // Encrypt entry functions
 pub fn encrypt_password_entry(
     password: &Password,

@@ -32,6 +32,15 @@ pub struct AddCard {
     expiration_date: gtk::EntryBuffer,
 }
 
+pub struct AddTOTPEntry {
+    name: gtk::EntryBuffer,
+    algorithm: gtk::EntryBuffer,
+    secret: gtk::EntryBuffer,
+    digits: gtk::EntryBuffer,
+    skew: gtk::EntryBuffer,
+    period: gtk::EntryBuffer,
+}
+
 pub struct AddEntryPrompt {
     is_active: bool,
 
@@ -40,6 +49,7 @@ pub struct AddEntryPrompt {
     add_password: AddPassword,
     add_note: AddNote,
     add_card: AddCard,
+    add_totp: AddTOTPEntry,
 
     pub response_dialog: Connector<AddEntryResponseDialog>,
 
@@ -261,6 +271,59 @@ impl SimpleComponent for AddEntryPrompt {
                     },
                 },
 
+                // Add TOTP Entry Box
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_spacing: 10,
+                    set_margin_all: 10,
+
+                    #[watch]
+                    set_visible: matches!(model.entry_type_view, EntryTypeView::TOTP),
+
+                    gtk::Label {
+                        set_label: "Name",
+                    },
+                    gtk::Entry {
+                        set_buffer: &model.add_totp.name,
+                    },
+
+                    gtk::Label {
+                        set_label: "Algorithm",
+                    },
+                    gtk::Entry {
+                        set_buffer: &model.add_totp.algorithm,
+                    },
+
+                    gtk::Label {
+                        set_label: "Secret",
+                    },
+                    gtk::Entry {
+                        set_buffer: &model.add_totp.secret,
+                    },
+
+                    gtk::Label {
+                        set_label: "Digits",
+                    },
+                    gtk::Entry {
+                        set_buffer: &model.add_totp.digits,
+                    },
+
+                    gtk::Label {
+                        set_label: "Skew",
+                    },
+                    gtk::Entry {
+                        set_buffer: &model.add_totp.skew,
+                    },
+
+                    gtk::Label {
+                        set_label: "Period",
+                    },
+                    gtk::Entry {
+                        set_buffer: &model.add_totp.period,
+                    },
+
+                },
+
                 gtk::Button {
                     set_margin_all: 40,
                     set_label: "Add",
@@ -299,6 +362,14 @@ impl SimpleComponent for AddEntryPrompt {
                 card_number: gtk::EntryBuffer::default(),
                 security_code: gtk::EntryBuffer::default(),
                 expiration_date: gtk::EntryBuffer::default(),
+            },
+            add_totp: AddTOTPEntry {
+                name: gtk::EntryBuffer::default(),
+                algorithm: gtk::EntryBuffer::default(),
+                secret: gtk::EntryBuffer::default(),
+                digits: gtk::EntryBuffer::default(),
+                skew: gtk::EntryBuffer::default(),
+                period: gtk::EntryBuffer::default(),
             },
 
             response_dialog: AddEntryResponseDialog::builder()
@@ -377,7 +448,22 @@ impl SimpleComponent for AddEntryPrompt {
                     }
                 }
 
-                _ => {}
+                EntryTypeView::TOTP => {
+                    let name = self.add_totp.name.text();
+                    let algorithm = self.add_totp.algorithm.text();
+                    let secret = self.add_totp.secret.text();
+                    let digits = self.add_totp.digits.text();
+                    let skew = self.add_totp.skew.text();
+                    let period = self.add_totp.period.text();
+
+                    if let Ok(new_entry_list_item) =
+                        add_totp_action(&name, &algorithm, &secret, &digits, &skew, &period, self)
+                    {
+                        sender
+                            .output(AddEntryPromptOutput::NewEntryListItem(new_entry_list_item))
+                            .unwrap();
+                    }
+                }
             },
 
             AddEntryPromptMsg::Show => {

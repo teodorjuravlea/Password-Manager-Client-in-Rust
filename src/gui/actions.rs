@@ -249,6 +249,107 @@ pub fn add_card_action(
     panic!("Failed to get reference to app state");
 }
 
+pub fn add_totp_action(
+    name: &str,
+    algorithm: &str,
+    secret: &str,
+    digits: &str,
+    skew: &str,
+    period: &str,
+    add_entry_prompt: &mut AddEntryPrompt,
+) -> Result<EntryListItem, String> {
+    if algorithm != "SHA1" && algorithm != "SHA256" && algorithm != "SHA512" {
+        add_entry_prompt
+            .response_dialog
+            .emit(AddEntryResponseDialogMsg::AddEntryFail(
+                "Invalid algorithm".to_string(),
+            ));
+        return Err("Invalid algorithm".to_string());
+    }
+
+    let digits = match digits.parse::<usize>() {
+        Ok(digits) => digits,
+        Err(_) => {
+            add_entry_prompt
+                .response_dialog
+                .emit(AddEntryResponseDialogMsg::AddEntryFail(
+                    "Invalid digits".to_string(),
+                ));
+            return Err("Invalid digits".to_string());
+        }
+    };
+
+    let skew = match skew.parse::<u8>() {
+        Ok(skew) => skew,
+        Err(_) => {
+            add_entry_prompt
+                .response_dialog
+                .emit(AddEntryResponseDialogMsg::AddEntryFail(
+                    "Invalid skew".to_string(),
+                ));
+            return Err("Invalid skew".to_string());
+        }
+    };
+
+    let period = match period.parse::<u64>() {
+        Ok(period) => period,
+        Err(_) => {
+            add_entry_prompt
+                .response_dialog
+                .emit(AddEntryResponseDialogMsg::AddEntryFail(
+                    "Invalid period".to_string(),
+                ));
+            return Err("Invalid period".to_string());
+        }
+    };
+
+    let entry = create_totp_entry(name, algorithm, secret, digits, skew, period);
+
+    let mut app_state = add_entry_prompt.app_state.borrow_mut();
+
+    if let Some(vault) = &app_state.vault {
+        let encrypted_entry = match encrypt_totp_entry(&entry, &vault.ciphers.totp_entry_cipher) {
+            Ok(encrypted_entry) => encrypted_entry,
+            Err(e) => {
+                panic!("Failed to encrypt entry: {}", e);
+            }
+        };
+
+        match add_encrypted_data_entry_request(
+            encrypted_entry,
+            &app_state.client,
+            &app_state.base_url,
+        ) {
+            Ok(response) => {
+                println!("Add card entry successful: {}", response.status);
+
+                let data_vault = match app_state.vault.as_mut() {
+                    Some(vault) => vault,
+                    None => {
+                        panic!("Failed to get reference to data vault");
+                    }
+                };
+
+                let entries_vault = &mut data_vault.entries_vault;
+                entries_vault.totp_entries.push(entry);
+
+                return Ok(EntryListItem::new(name, "", EntryType::TOTP));
+            }
+            Err(e) => {
+                println!("Add TOTP entry failed: {}", e);
+
+                add_entry_prompt
+                    .response_dialog
+                    .emit(AddEntryResponseDialogMsg::AddEntryFail(e.to_string()));
+
+                return Err(e.to_string());
+            }
+        }
+    }
+
+    panic!("Failed to get reference to app state");
+}
+
 pub fn delete_entry_action(
     name: &str,
     content_type: &str,
